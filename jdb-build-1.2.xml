@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project name="Jonathan Bernard Build Common">
+
+    <property environment="env"/>
+
+    <!--======== INIT TARGETS ========-->
+    <target name="-init" depends="-common-init,init"/>
+
+    <target name="-common-init">
+        <!-- Set default values for some key properties. Since properties are
+             write once, any value set before this point takes precedence. -->
+
+        <property name="versioning.file" value="project.properties"/>
+
+        <property name="src.dir" value="${basedir}/src"/>
+        <property name="build.dir" value="${basedir}/build"/>
+        <property name="lib.dir" value="${basedir}/lib"/>
+        <property name="resources.dir" value="${basedir}/resources"/>
+
+        <!--======== PATHS ========-->
+        <path id="groovy.classpath">
+            <fileset dir="${env.GROOVY_HOME}/lib">
+                <include name="*.jar"/>
+            </fileset>
+        </path>
+
+        <path id="groovy.embeddable">
+            <fileset dir="${env.GROOVY_HOME}/embeddable">
+                <include name="*.jar"/>
+            </fileset>
+        </path>
+
+        <path id="compile-libs">
+            <fileset dir="${build.dir}/lib/compile/jar">
+                <include name="*.jar"/>
+            </fileset>
+        </path>
+
+        <path id="runtime-libs">
+            <fileset dir="${build.dir}/lib/runtime/jar">
+                <include name="*.jar"/>
+            </fileset>
+        </path>
+
+    </target>
+
+    <target name="-init-groovy">
+        <taskdef name="groovyc" classpathref="groovy.classpath"
+            classname="org.codehaus.groovy.ant.Groovyc"/>
+    </target>
+
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <!--======== LIBRARY TARGETS ========-->
+    <target name="lib" depends="-lib-local,-lib-ivy"/>
+
+    <target name="-lib-ivy" unless="${lib.local}"/>
+
+    <target name="-lib-local" if="${lib.local}">
+        <echo message="Resolving libraries locally."/>
+        <copy todir="${build.dir}/lib/compile/jar">
+            <fileset dir="${lib.dir}/compile/jar"/>
+        </copy>
+
+        <copy todir="${build.dir}/lib/runtime/jar">
+            <fileset dir="${lib.dir}/runtime/jar"/>
+        </copy>
+    </target>
+
+    <!--======== VERSIONING TARGETS ========-->
+    <target name="increment-build-number" depends="-init">
+        <propertyfile file="${versioning.file}">
+            <entry key="build.number" default="0" type="int" value="1"
+                operation="+"/>
+        </propertyfile>
+    </target>
+
+    <target name="set-version" depends="-init">
+        <input
+            message="The current version is ${version}. Enter a new version: "
+            addproperty="new-version"/>
+        <propertyfile file="${versioning.file}">
+            <entry key="version" value="${new-version}" operation="="
+                type="string"/>
+        </propertyfile>
+    </target>
+
+    <!--======== COMPILATION TARGETS ========-->
+    <target name="-compile-groovy" depends="-init,-init-groovy,lib">
+        <groovyc srcdir="${src.dir}" destdir="${build.dir}/main/classes"
+            includeAntRuntime="false">
+
+            <classpath>
+                <path refid="groovy.classpath"/>
+                <path refid="compile-libs"/>
+            </classpath>
+            <javac/>
+        </groovyc>
+    </target>
+
+    <target name="-compile-java" depends="-init,lib">
+        <javac srcdir="${src.dir}" destdir="${build.dir}/main/classes"
+            includeAntRuntime="false" classpathref="compile-libs"/>
+    </target>
+
+    <target name="compile" depends="-compile-groovy"/>
+
+    <!--======== JUNIT TARGETS ========-->
+    <target name="-compile-tests-groovy" depends="-init,compile">
+        <groovyc srcdir="${test.dir}" destdir="${build.dir}/test/classes"
+            includeAntRuntime="false">
+            
+            <classpath>
+                <path refid="groovy.classpath"/>
+                <path refid="compile-libs"/>
+                <path location="${build.dir}/main/classes"/>
+            </classpath>
+        </groovyc>
+    </target>
+
+    <target name="-compile-tests-java" depends="-init,compile">
+        <javac srcdir="${test.dir}" destdir="${build.dir}/test/classes"
+            includeAntRuntime="false">
+            <classpath>
+                <path refid="compile-libs"/>
+                <path location="${build.dir}/main/classes"/>
+            </classpath>
+        </javac>
+    </target>
+
+    <target name="compile-tests" depends="-compile-tests-groovy"/>
+
+    <target name="run-tests" depends="compile-tests,resources-test">
+        <junit printsummary="true">
+            <classpath>
+                <path refid="groovy.classpath"/>
+                <path refid="compile-libs"/>
+                <path location="${build.dir}/main/classes"/>
+                <path location="${build.dir}/test/classes"/>
+            </classpath>
+            <formatter type="plain" usefile="false"/>
+            <batchtest>
+                <fileset dir="${build.dir}/test/classes">
+                    <include name="**/*"/>
+                </fileset>
+            </batchtest>
+        </junit>
+    </target>
+
+    <!--======== RESOURCES TARGETS ========-->
+    
+    <target name="resources" depends="-init">
+        <copy todir="${build.dir}/main/classes">
+            <fileset dir="${resources.dir}/main/"/>
+        </copy>
+    </target>
+
+    <target name="resources-test" depends="-init">
+        <copy todir="${build.dir}/test/classes">
+            <fileset dir="${resources.dir}/test/"/>
+        </copy>
+    </target>
+
+    <!--======== BUILD TARGETS ========-->
+    <target name="-build-modular"
+        depends="compile,increment-build-number,resources">
+
+        <jar destfile="${build.dir}/${name}-${version}.${build.number}.jar"
+            basedir="${build.dir}/main/classes"/>
+    </target>
+
+    <target name="-build-packed-libs"
+        depends="compile,increment-build-number,resources">
+
+        <unjar destdir="${build.dir}/main/classes">
+            <fileset dir="${build.dir}/lib/runtime/jar"/>
+        </unjar>
+
+        <jar destfile="${build.dir}/${name}-${version}.${build.number}.jar"
+            basedir="${build.dir}/main/classes"/>
+    </target>
+
+    <target name="build" depends="-build-modular"/>
+
+</project>

@@ -1,0 +1,38 @@
+<project name="Groovy Twitter CLI" basedir=".">
+
+    <property file="project.properties"/>
+    <import file="jdb-build-1.2.xml"/>
+
+    <target name="init">
+        <mkdir dir="${build.dir}/main/classes"/>
+    </target>
+
+    <target name="ng-deploy" depends="build">
+        <!-- Stop the Nailgun Server -->
+        <exec executable="cmd">
+            <arg value="/c"/>
+            <arg value="ng-stop"/>
+        </exec>
+
+        <!-- delete old copies -->
+        <delete>
+            <fileset dir="${nailgun.classpath.dir}">
+                <include name="${name}*.jar"/>
+            </fileset>
+        </delete>
+
+        <!-- copy new build -->
+        <copy todir="${nailgun.classpath.dir}">
+            <fileset dir="${build.dir}/lib/runtime/jar"/>
+            <fileset dir="${build.dir}">
+                <include name="${name}-${version}.${build.number}.jar"/>
+            </fileset>
+        </copy>
+
+        <!-- start the NG server up again. -->
+        <exec executable="cmd">
+            <arg value="/c"/>
+            <arg value="ng-start"/>
+        </exec>
+    </target>
+</project>
