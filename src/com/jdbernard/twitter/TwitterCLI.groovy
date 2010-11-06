@@ -7,19 +7,55 @@ import twitter4j.conf.PropertyConfiguration
 
 public class TwitterCLI {
 
-    static def twitter
+    private static TwitterCLI nailgunInst
+    private Twitter twitter
 
     public static void main(String[] args) {
-        if (args.length < 1) printUsage()
+        TwitterCLI inst = new TwitterCLI(new File(System.getProperty("user.home"),
+            ".groovy-twitter-cli-rc"))
 
+        inst.run(args as List)
+    }
+
+    public static void nailMain(String[] args) {
+
+        if (nailgunInst == null) nailgunInst = new TwitterCLI(new File(
+            System.getProperty("user.home"), ".groovy-twitter-cli-rc"))
+
+        nailgunInst.run(args as List)
+    }
+
+    public static void setColor(boolean bright, int code) {
+        print "\u001b[${bright?'1':'0'};${code}m"
+    }
+
+    public static void resetColor() { print "\u001b[m" }
+
+    public static void colorPrint(def message, boolean bright, int color) {
+        setColor(bright, color)
+        print message
+        resetColor()
+    }
+
+    public static void colorPrintln(def message, boolean bright, int color) {
+        setColor(bright, color)
+        println message
+        resetColor()
+    }
+
+    public TwitterCLI(File propFile) {
+
+        // load the configuration
         Configuration conf
-        File propFile = new File(System.getProperty("user.home"), ".groovy-twitter-cli-rc")
-
         propFile.withInputStream { is -> conf = new PropertyConfiguration(is) }
 
+        // create a twitter instance
         twitter = (new TwitterFactory(conf)).getInstance()
 
-        args = args as List
+    }
+
+    public void run(List args) {
+        if (args.size() < 1) printUsage()
 
         switch (args[0].toLowerCase()) {
             case ~/t.*/: timeline(args.tail()); break
@@ -28,27 +64,10 @@ public class TwitterCLI {
             default:
                 printUsage()
         }
+
     }
 
-    void setColor(boolean bright, int code) {
-        print "\u001b[${bright?'1':'0'};${code}m"
-    }
-
-    void resetColor() { print "\u001b[m" }
-
-    void colorPrint(def message, boolean bright, int color) {
-        setColor(bright, color)
-        print message
-        resetColor()
-    }
-
-    void colorPrintln(def message, boolean bright, int color) {
-        setColor(bright, color)
-        println message
-        resetColor()
-    }
-
-    void timeline(List args) {
+    public void timeline(List args) {
 
         // default to showing my friends timeline
         if (args.size() == 0) args = ["friends"]
@@ -83,7 +102,7 @@ public class TwitterCLI {
         }
     }
 
-    void printUsage() {
+    public static void printUsage() {
         // TODO
     }
 }

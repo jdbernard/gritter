@@ -9,10 +9,12 @@
 
     <target name="ng-deploy" depends="build">
         <!-- Stop the Nailgun Server -->
-        <exec executable="cmd">
+        <exec executable="cmd" os="">
             <arg value="/c"/>
             <arg value="ng-stop"/>
         </exec>
+
+        <exec executable="ng-stop" os="Linux"/>
 
         <!-- delete old copies -->
         <delete>
@@ -30,9 +32,11 @@
         </copy>
 
         <!-- start the NG server up again. -->
-        <exec executable="cmd">
+        <exec executable="cmd" os="">
             <arg value="/c"/>
             <arg value="ng-start"/>
         </exec>
+
+        <exec executable="ng-start" os="Linux"/>
     </target>
 </project>
