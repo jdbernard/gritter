@@ -49,7 +49,7 @@
             classname="org.codehaus.groovy.ant.Groovyc"/>
     </target>
 
-    <target name="clean">
+    <target name="clean" depends="-init">
         <delete dir="${build.dir}"/>
     </target>
 
@@ -60,11 +60,11 @@
 
     <target name="-lib-local" if="${lib.local}">
         <echo message="Resolving libraries locally."/>
-        <copy todir="${build.dir}/lib/compile/jar">
+        <copy todir="${build.dir}/lib/compile/jar" failonerror="false">
             <fileset dir="${lib.dir}/compile/jar"/>
         </copy>
 
-        <copy todir="${build.dir}/lib/runtime/jar">
+        <copy todir="${build.dir}/lib/runtime/jar" failonerror="false">
             <fileset dir="${lib.dir}/runtime/jar"/>
         </copy>
     </target>
@@ -152,13 +152,13 @@
     <!--======== RESOURCES TARGETS ========-->
     
     <target name="resources" depends="-init">
-        <copy todir="${build.dir}/main/classes">
+        <copy todir="${build.dir}/main/classes" failonerror="false">
             <fileset dir="${resources.dir}/main/"/>
         </copy>
     </target>
 
     <target name="resources-test" depends="-init">
-        <copy todir="${build.dir}/test/classes">
+        <copy todir="${build.dir}/test/classes" failonerror="false">
             <fileset dir="${resources.dir}/test/"/>
         </copy>
     </target>
