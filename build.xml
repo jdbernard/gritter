@@ -1,4 +1,4 @@
-<project name="Groovy Twitter CLI" basedir=".">
+<project name="gritter" basedir=".">
 
     <property file="project.properties"/>
     <import file="jdb-build-1.2.xml"/>
@@ -39,4 +39,5 @@
 
         <exec executable="ng-start" os="Linux"/>
     </target>
+
 </project>
