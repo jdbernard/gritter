@@ -205,6 +205,7 @@ public class TwitterCLI {
 
         int authorLen = 0, textLen
         String statusIndent
+        def textColor = colors.even
 
         timeline.each { status ->
             if (status.user.screenName.length() > authorLen)
@@ -223,8 +224,9 @@ public class TwitterCLI {
                     substring(statusIndent.length())
             } 
                 
-            text = text.replaceAll(/(@\w+)/, color("\$1", colors.mentioned))
-            println color(text, (rowNum % 2 == 0 ? colors.even : colors.odd))
+            textColor = (rowNum % 2 == 0 ? colors.even : colors.odd)
+            text = text.replaceAll(/(@\w+)/, color("\$1", colors.mentioned, textColor))
+            println color(text, textColor)
         }
     }
 
@@ -234,9 +236,10 @@ public class TwitterCLI {
 
     public String resetColor() { colored ? "\u001b[m" : "" }
 
-    public String color(def message, ConsoleColor color) {
+    public String color(def message, ConsoleColor color,
+    ConsoleColor existing = null) {
         if (!colored) return message
-        return color.toString() + message + resetColor()
+        return color.toString() + message + (existing ?: resetColor())
     }
 
 }
