@@ -1,7 +1,7 @@
 <project name="gritter" basedir=".">
 
     <property file="project.properties"/>
-    <import file="jdb-build-1.2.xml"/>
+    <import file="jdb-build-1.3.xml"/>
 
     <target name="init">
         <mkdir dir="${build.dir}/main/classes"/>
