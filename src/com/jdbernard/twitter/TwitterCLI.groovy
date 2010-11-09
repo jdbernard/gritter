@@ -1,6 +1,10 @@
 package com.jdbernard.twitter
 
 import com.martiansoftware.nailgun.NGContext
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import twitter4j.Paging
+import twitter4j.Status
 import twitter4j.Twitter
 import twitter4j.TwitterFactory
 import twitter4j.conf.Configuration
@@ -20,30 +24,32 @@ public class TwitterCLI {
     private int terminalWidth
     private boolean colored
 
+    private Logger log = LoggerFactory.getLogger(getClass())
+
     public static void main(String[] args) {
         TwitterCLI inst = new TwitterCLI(new File(System.getProperty("user.home"),
-            ".groovy-twitter-cli-rc"))
+            ".gritterrc"))
 
-        inst.run((args as List) as Queue)
+        inst.run((args as List) as LinkedList)
     }
 
     public static void nailMain(NGContext context) {
         if (nailgunInst == null)
             nailgunInst = new TwitterCLI(new File(
-                System.getProperty("user.home"), ".groovy-twitter-cli-rc"))
+                System.getProperty("user.home"), ".gritterrc"))
         else 
             nailgunInst.stdin = new Scanner(context.in)
 
         nailgunInst.
-        nailgunInst.run((context.args as List) as Queue)
+        nailgunInst.run((context.args as List) as LinkedList)
     }
 
-    public static void reconfigure(Queue args) {
+    public static void reconfigure(LinkedList args) {
         if (nailgunInst == null) main(args as String[])
         else {
             nailgunInst = null
             nailgunInst = new TwitterCLI(new File(
-                System.getProperty("user.home"), ".groovy-twitter-cli-rc"))
+                System.getProperty("user.home"), ".gritterrc"))
 
             nailgunInst.run(args)
         }
@@ -63,15 +69,19 @@ public class TwitterCLI {
 
             curLineLength++
             if (curLineLength > actualWidth) {
+                
+                if (lastSpaceIdx == -1) // we haven't seen a space on this line
+                    lastSpaceIdx = lineStartIdx + actualWidth - 1
+
                 wrapped += prefix + text[lineStartIdx..<lastSpaceIdx] + suffix + EOL
                 curLineLength = 0
                 lineStartIdx = lastSpaceIdx + 1
-                i = lastSpaceIdx
+                i = lastSpaceIdx + 1
+                lastSpaceIdx = -1
             }
 
             if (text.charAt(i).isWhitespace())
-            lastSpaceIdx = i
-
+                lastSpaceIdx = i
         }
 
         if (i - lineStartIdx > 1)
@@ -105,58 +115,87 @@ public class TwitterCLI {
         stdin = new Scanner(System.in)
     }
 
-    public void run(Queue args) {
+    /* ======== PARSING FUNCTIONS ========*/
+
+    public void run(LinkedList args) {
         if (args.size() < 1) printUsage()
+
+        log.debug("argument list: {}", args)
 
         while (args.peek()) {
             def command = args.poll()
 
             switch (command.toLowerCase()) {
-                case ~/h.*/: help(args); break
-                case ~/p.*/: post(args); break 
-                case ~/r.*/: reconfigure(args); break
-                case ~/se.*/: set(args); break
-                case ~/sh.*/: show(args); break
-                case ~/t.*/: timeline(args); break
-
-                default:
-                    printUsage()
+                case ~/delete|destroy|remove/: delete(args); break
+                case ~/get|show/: get(args); break            // get|show
+                case ~/help/: help(args); break               // help
+                case ~/post|add|create/: post(args); break    // post|add|create
+                case ~/reconfigure/: reconfigure(args); break // reconfigure
+                case ~/set/: set(args); break                 // set
+                default:                                      // fallthrough
+                    args.addFirst(command)
+                    get(args)
             }
         }
     }
 
-    public void help(Queue args) {
+    public void delete(LinkedList args) {
 
     }
 
-    public void post(Queue args) {
-        def status = args.poll()
+    public void get(LinkedList args) {
+        def option = args.poll()
 
-        if (!status) {
-            println color("post ", colors.option) +
-                color("command requires one option: ", colors.error) +
-                "twitter post <status>"
-            return
+        log.debug("Processing a 'get' command, option = {}.", option)
+
+        switch(option) {
+            case "list":  showList(args); break
+            case "lists": showLists(args); break
+            case ~/subs.*/:   showSubscriptions(args); break
+            case "timeline":   showTimeline(args); break
+            case "user":   showUser(args); break
+            default: args.addFirst(option)
+                showTimeline(args)
         }
-
-        if (status.length() > 140)  {
-            println color("Status exceeds Twitter's 140 character limit.", colors.error)
-            return
-        }
-
-        print "Update status: '$status'? "
-        if (stdin.nextLine() ==~ /yes|y|true|t/)
-            twitter.updateStatus(status)
     }
 
-    public void set(Queue args) {
+    public void help(LinkedList args) {
+
+        log.debug("Processing a 'help' command.")
+    }
+
+    public void post(LinkedList args) {
+        def option = args.poll()
+
+        log.debug("Processing a 'post' command: option = '{}'", option)
+
+        if (!option) {
+            println color("post", colors.option) +
+                color(" command requires at least two parameters: ",
+                colors.error) + "gritter post <status|retweet|list> " +
+                "<options>..."
+            return
+        }
+
+        switch (option) {
+            case "status": postStatus(args.poll()); break
+            case "retweet": retweetStatus(args.poll()); break
+            case "list": createList(args); break
+            default: postStatus(option)
+        }
+    }
+
+    public void set(LinkedList args) {
         def option = args.poll()
         def value = args.poll()
+
+        log.debug("Processing a 'set' command: option = '{}', value = '{}'",
+            option, value)
 
         if (!value) {   // note: if option is null, value is null
             println color("set", colors.option) +
                 color(" command requires two options: ", colors.error) +
-                "twitter set <param> <value>"
+                "gritter set <param> <value>"
             return
         }
 
@@ -172,21 +211,38 @@ public class TwitterCLI {
         }
     }
 
-    public void show(Queue args) {
+    public void showList(LinkedList args) {
+        def option = args.poll()
 
+        log.debug("Processing a 'show list' command, option = '{}'", option)
+
+        switch(option) {
+            case "members": showListMembers(args); break
+            case "subscribers": showListSubscribers(args); break
+            case "subscriptions": showListSubscriptions(args); break
+            default: args.addFirst(option)
+                showListTimeline(args)
+        }
     }
 
-    public void timeline(Queue args) {
+    public void showTimeline(LinkedList args) {
 
-        String timeline = args.poll() ?: "friends"
+        String timeline = args.poll() ?: "home"
         
+        log.debug("Processing a 'show timeline' command, timeline = '{}'",
+            timeline)
+
         switch (timeline) {
             // friends
-            case ~/f.*/: printTimeline(twitter.friendsTimeline); break
+            case "friends": printTimeline(twitter.friendsTimeline); break
+            // home
+            case "home": printTimeline(twitter.homeTimeline); break
             // mine
-            case ~/m.*/: printTimeline(twitter.userTimeline); break
+            case "mine": printTimeline(twitter.userTimeline); break
+            // public
+            case "public": printTimeline(twitter.publicTimeline); break
             // user
-            case ~/u.*/:
+            case "user":
                 String user = args.poll()
                 if (user) {
                     if (user.isNumber())
@@ -201,33 +257,319 @@ public class TwitterCLI {
         }
     }
 
-    void printTimeline(def timeline) {
+    public void showUser(LinkedList args) {
+        def user = args.poll()
 
-        int authorLen = 0, textLen
-        String statusIndent
-        def textColor = colors.even
+        log.debug("Processing a 'show user' command, user = '{}'", user)
+    }
+
+    public void createList(LinkedList args) {
+        def option = args.poll()
+
+        switch(option) {
+            case "member": addListMember(args); break
+            case "subscription": addListSubscription(args); break
+            default: args.addFirst(option)
+                createNewList(args); break
+        }
+    }
+
+    /* ======== WORKER FUNCTIONS ========*/
+
+    public void printTimeline(def timeline) {
+
+        log.debug("Printing a timeline: {}", timeline)
+
+        Map formatOptions = [:]
+
+        formatOptions.authorLength = 0
 
         timeline.each { status ->
-            if (status.user.screenName.length() > authorLen)
-                authorLen = status.user.screenName.length()
+            if (status.user.screenName.length() > formatOptions.authorLength)
+                formatOptions.authorLength = status.user.screenName.length()
         }
             
-        timeline.eachWithIndex { status, rowNum ->
-            String text = status.text
-            print color(status.user.screenName.padLeft(authorLen), colors.author)
-            print ": "
-            statusIndent = "".padLeft(authorLen + 2)
-            textLen = terminalWidth - statusIndent.length()
+        formatOptions.indent = "".padLeft(formatOptions.authorLength + 2)
 
-            if (text.length() > textLen) {
-                text = wrapToWidth(text, terminalWidth, statusIndent, "").
-                    substring(statusIndent.length())
-            } 
-                
-            textColor = (rowNum % 2 == 0 ? colors.even : colors.odd)
-            text = text.replaceAll(/(@\w+)/, color("\$1", colors.mentioned, textColor))
-            println color(text, textColor)
+        timeline.eachWithIndex { status, rowNum ->
+            formatOptions.rowNum = rowNum
+            println formatStatus(status, formatOptions)
         }
+    }
+
+    public void showLists(LinkedList args) {
+        def user = args.poll()
+
+        log.debug("Processing a 'show lists' command, user = '{}'", user)
+
+        if (!user) user = twitter.screenName
+
+        printLists(twitter.showUserLists(user))
+    }
+
+    public void showListMembers(LinkedList args) {
+        def listRef = parseListReference(args)
+
+        log.debug("Processing a 'show list members' command, list = '{}'",
+            listRef)
+
+        if (!listRef) {
+            println color("show list members", colors.option) +
+                color(" command requires a list reference in the form of " +
+                "user/list: ", colors.error) +
+                "gritter show list members <user/list>"
+            return
+        }
+
+        printUserList(twitter.getUserListMembers(
+            listRef.username, listRef.listId, -1)) // TODO paging
+    }
+
+    public void showListSubscribers(LinkedList args) {
+        def listRef = parseListReference(args)
+
+        log.debug("Processing a 'show list subscribers' command, list = '{}'",
+            listRef)
+
+        if (!listRef) {
+            println color("show list subscribers", colors.option) +
+                color(" command requires a list reference in the form of " +
+                "user/list: ", colors.error) +
+                "gritter show list subscribers <user/list>"
+            return
+        }
+
+        printUserList(twitter.getUserListSubscribers(
+            listRef.username, listRef.listId, -1))  // TODO: paging
+    }
+
+    public void showListSubscriptions(LinkedList args) {
+        def user = args.poll()
+
+        log.debug("Processing a 'show list subscriptions' command, list = '{}'",
+            listRef)
+
+        if (!user) user = twitter.screenName
+
+        printLists(twitter.getUserListSubscriptions(user, -1)) // TODO: paging
+    }
+
+    public void showListTimeline(LinkedList args) {
+        if (args.size() < 1) {
+            println color("show list", colors.option) +
+                color(" command requires a list reference in the form of " +
+                "user/list: ", colors.error) +
+                "gritter show list <user/list>"
+            return
+        }
+
+        def listRef = parseListReference(args)
+
+        log.debug("Showing a list timeline, list = '{}'", listRef)
+
+        if (listRef.listId == -1) {
+            println color("show list", colors.option) +
+                color(" command requires a list reference in the form of " +
+                "user/list: ", colors.error) +
+                "gritter show list <user/list>"
+            return
+        }
+
+        printTimeline(twitter.getUserListStatuses(
+            listRef.username, listRef.listId, new Paging()))  // TODO: paging
+    }
+
+    public void postStatus(String status) {
+
+        log.debug("Posting a status: '{}'", status)
+
+        if (!status) {
+            println color("post status ", colors.option) +
+                color("command requires one option: ", colors.error) +
+                "gritter post status <status>"
+            return
+        }
+
+        if (status.length() > 140)  {
+            println color("Status exceeds Twitter's 140 character limit.", colors.error)
+            return
+        }
+
+        println "Update status: '$status'? "
+        if (stdin.nextLine() ==~ /yes|y|true|t/) {
+            try {
+                twitter.updateStatus(status)
+                println "Status posted."
+            } catch (Exception e) {
+                println "An error occurred trying to post the status: '" +
+                    e.localizedMessage
+                log.error("Error posting status:", e)
+            }
+        } else println "Status post canceled."
+    }
+
+    public void retweetStatus(def statusId) {
+        
+        log.debug("Retweeting a status: '{}'", statusId)
+
+        if (!statusId.isLong() || !statusId) {
+            println color("retweet ", colors.option) +
+                color("command requires a status id: ", colors.error) +
+                "gritter post retweet <statusId>"
+        }
+
+        statusId = statusId as long
+        def status = twitter.showStatus(statusId)
+
+        println "Retweet '" + color(status.text, colors.odd) + "'? "
+        if (stdin.nextLine() ==~ /yes|y|true|t/)
+            twitter.retweetStatus(statusId)
+    }
+
+    public void addListMember(LinkedList args) {
+        def listRef = args.poll()
+        def user = args.poll()
+        def list
+
+        log.debug("Adding a member to a list: list='{}', user='{}'",
+            list, user)
+
+        if (!user) {
+            println color("add list member", colors.option) +
+                color(" requires two parameters: ", colors.error) +
+                "gritter add list member <list-ref> <user>"
+            return
+        }
+
+        // look up the list id if neccessary
+        if (listRef.isInteger()) listRef = listRef as int
+        else list = findListByName(twitter.screenName, listRef)
+
+        if (!list) {
+            println color("No list found that matches the given description: ",
+                colors.error) + color(listRef, colors.option)
+            return 
+        }
+
+        // look up the user id if neccessary
+        if (user.isLong()) user = user as long
+        else user = twitter.showUser(user).id
+
+        twitter.addUserListMember(list, user)
+
+    }
+
+    public void addListSubscription(LinkedList args) {
+        def listRef = parseListReference(args)
+
+        log.debug("Subscribing to a list: list='{}'", listRef)
+
+        if (!listRef) {
+            println color("add list subscription ", colors.option) +
+                color("expects a list name, user/list: ", colors.error) +
+                "gritter add list subscription <user/list>"
+            return 
+        }
+
+        twitter.subscribeUserList(listRef.username, listRef.listId)
+    }
+    
+    public void createNewList(LinkedList args) {
+        def name = args.poll()
+        def isPublic = args.poll()
+        def desc = args.poll()
+
+        log.debug("Creating a new list: name='{}', isPublic='{}', desc='{}'",
+            name, isPublic, desc)
+
+        if (desc == null) {
+            println color("create list ", colors.option) +
+                color("command requires three arguments: ", colors.error) +
+                "gritter create list <listName> <isPublic> <listDescription>"
+            return 
+        }
+
+        println "Create list '${color(list, colors.option)}'?"
+        if (stdin.nextLine() ==~ /yes|y|true|t/)
+            twitter.createUserList(name, isPublic ==~ /yes|y|true|t/, desc)
+    }
+
+    public def parseListReference(LinkedList args) {
+        def username = args.poll()
+        def listId
+
+        log.debug("Looking up a list: ref = '{}'", username)
+        log.debug("remaining args='{}'", args)
+
+        if (!username) return false
+
+        username = username.split("/")
+
+        if (username.length != 2) {
+            listId = username[0]
+            username = twitter.screenName
+        } else {
+            listId = username[1]
+            username = username[0]
+        }
+
+        if (listId.isInteger()) listId = listId as int
+        else listId = findListByName(username, listId)
+
+        // TODO: err if list does not exist
+
+        return [username: username, listId: listId]
+    }
+
+    public int findListByName(String userName, String listName) {
+
+        def userLists
+        long cursor = -1
+        int listId = -1
+
+        while(listId == -1) {
+            userLists = twitter.getUserLists(userName, cursor)
+            userLists.each { list ->
+                if (listName == list.name || listName == list.slug)
+                    listId = list.id
+            }
+
+            if (!userLists.hasNext()) break
+
+            cursor = userLists.nextCursor
+        }
+
+        return listId
+    }
+
+    public String formatStatus(Status status, Map formatOptions) {
+
+        def indent = formatOptions.indent ?: ""
+        def authorLength = formatOptions.authorLength ?: 0
+        def rowNum = formatOptions.rowNum ?: 0
+
+        String result
+        def textColor = (rowNum % 2 == 0 ? colors.even : colors.odd)
+
+        // add author's username
+        result = color(status.user.screenName.padLeft(
+            authorLength), colors.author, textColor) + ": "
+
+        // format the status text
+        String text = status.text
+
+        // wrap text to terminal width if neceary
+        if (text.length() > terminalWidth - indent.length()) {
+            text = wrapToWidth(text, terminalWidth, indent, "").
+                substring(indent.length())
+        } 
+            
+        // color @mentions in the tweet
+        text = text.replaceAll(/(@\w+)/, color("\$1", colors.mentioned, textColor))
+
+        result += text
+
+        return result
     }
 
     public static void printUsage() {

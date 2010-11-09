@@ -1,0 +1,59 @@
+[ ] help
+
+[ ] reconfigure
+
+[ ] set
+
+[ ] get/show (default)
+[ ]     timeline (default)
+[X]         public
+[X]         friends
+[X]         home (default)
+[X]         mine
+[X]         user
+[X]             *username*
+[X]     lists
+            *username* (default to authenticated user)
+[X]     list
+[X]         *username*/*list id || list name*
+[X]         members
+                *username*/*list id || list name*
+[X]         subscribers
+                *username*/*list id || list name*
+[X]         subscriptions
+                *user*
+[ ]     user
+            *user id*
+[ ]     following
+[ ]     followers
+
+[/] post/add/create/
+[X]     status (default)
+            *status*
+[X]     retweet
+            *status_id*
+[X]     list
+[X]         member
+                *list id* || *list name*, *user id*
+[X]         subscription
+                *listuser*/*list id*
+[X]         *listName*, *isPublic*, *description*
+
+[ ] delete/destroy/remove
+[ ]     status
+[ ]         *status_id*
+[ ]     list
+[ ]         member
+[ ]             *list id* || *list name*, *user id*
+[ ]         subscription
+[ ]         *list id*
+
+[ ] follow
+[ ]     *user*
+[ ]     list
+            *user*/*list*
+
+[ ] unfollow
+[ ]     *user*
+[ ]     list
+            *user*/*list*
