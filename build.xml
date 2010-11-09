@@ -9,7 +9,7 @@
 
     <target name="ng-deploy" depends="build">
         <!-- Stop the Nailgun Server -->
-        <exec executable="cmd" os="">
+        <exec executable="cmd" os="Windows XP">
             <arg value="/c"/>
             <arg value="ng-stop"/>
         </exec>
@@ -32,7 +32,7 @@
         </copy>
 
         <!-- start the NG server up again. -->
-        <exec executable="cmd" os="">
+        <exec executable="cmd" os="Windows XP">
             <arg value="/c"/>
             <arg value="ng-start"/>
         </exec>

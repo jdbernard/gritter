@@ -23,6 +23,7 @@ public class TwitterCLI {
 
     private int terminalWidth
     private boolean colored
+    private boolean printStatusTimestamps
 
     private Logger log = LoggerFactory.getLogger(getClass())
 
@@ -100,7 +101,7 @@ public class TwitterCLI {
         twitter = (new TwitterFactory(new PropertyConfiguration(cfg))).getInstance()
 
         // configure the colors
-        colors.author = new ConsoleColor(cfg.getProperty("colors.author", "BLUE:false"))
+        colors.author = new ConsoleColor(cfg.getProperty("colors.author", "CYAN:false"))
         colors.mentioned = new ConsoleColor(cfg.getProperty("colors.mentioned", "GREEN:false"))
         colors.error = new ConsoleColor(cfg.getProperty("colors.error", "RED:true"))
         colors.option = new ConsoleColor(cfg.getProperty("colors.option", "YELLOW:true"))
@@ -111,6 +112,7 @@ public class TwitterCLI {
         terminalWidth = (System.getenv().COLUMNS ?: cfg.terminalWidth ?: 79) as int
 
         colored = (cfg.colored ?: 'true') as boolean
+        printStatusTimestamps = (cfg."timeline.printTimestamps" ?: 'true') as boolean
 
         stdin = new Scanner(System.in)
     }
@@ -276,6 +278,31 @@ public class TwitterCLI {
 
     /* ======== WORKER FUNCTIONS ========*/
 
+    public void printLists(def lists) {
+        int colSize = 0
+
+        // fins largest indentation needed
+        lists.each { list ->
+            curColSize = list.user.screenName.length() +
+                list.user.slug.length() + list.user.fullName.length() +
+                list.user.id.length()
+                
+            colSize = Math.max(colSize, curColSize)
+        }
+
+        lists.each { list ->
+            col1 = color(list.user.screenName, color.author) + "/" +
+                color("${list.slug} (${list.id})", color.option)
+            println col1.padLeft(colSize) + ": " + list.fullName
+
+            print color("M: ${list.user.memberCount}  S: ${list.user.subscriberCount}".
+                padLeft(2).padRight(colSize - 2), colors.author)
+
+            println wrapToWidth(list.description, terminalWidth,
+                "".padLeft(colSize), "").subtring(colSize)
+        }
+    }
+
     public void printTimeline(def timeline) {
 
         log.debug("Printing a timeline: {}", timeline)
@@ -304,7 +331,7 @@ public class TwitterCLI {
 
         if (!user) user = twitter.screenName
 
-        printLists(twitter.showUserLists(user))
+        printLists(twitter.getUserLists(user, -1)) // TODO paging
     }
 
     public void showListMembers(LinkedList args) {
@@ -553,15 +580,18 @@ public class TwitterCLI {
 
         // add author's username
         result = color(status.user.screenName.padLeft(
-            authorLength), colors.author, textColor) + ": "
+            authorLength) + ": ", colors.author, textColor)
 
         // format the status text
         String text = status.text
 
-        // wrap text to terminal width if neceary
+        // if this status takes up more room than we have left on the line
         if (text.length() > terminalWidth - indent.length()) {
+            // wrap text to terminal width
             text = wrapToWidth(text, terminalWidth, indent, "").
                 substring(indent.length())
+
+            // if we are 
         } 
             
         // color @mentions in the tweet
