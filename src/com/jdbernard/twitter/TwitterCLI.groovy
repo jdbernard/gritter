@@ -24,6 +24,8 @@ public class TwitterCLI {
     private int terminalWidth
     private boolean colored
     private boolean printStatusTimestamps
+    private boolean strict
+    private boolean warnings
 
     private Logger log = LoggerFactory.getLogger(getClass())
 
@@ -31,6 +33,8 @@ public class TwitterCLI {
         TwitterCLI inst = new TwitterCLI(new File(System.getProperty("user.home"),
             ".gritterrc"))
 
+        // trim the last argumnet, not all cli's are well-behaved
+        args[-1] = args[-1].trim()
         inst.run((args as List) as LinkedList)
     }
 
@@ -41,7 +45,9 @@ public class TwitterCLI {
         else 
             nailgunInst.stdin = new Scanner(context.in)
 
-        nailgunInst.
+        // trim the last argumnet, not all cli's are well-behaved
+        context.args[-1] = context.args[-1].trim()
+
         nailgunInst.run((context.args as List) as LinkedList)
     }
 
@@ -112,6 +118,8 @@ public class TwitterCLI {
         terminalWidth = (System.getenv().COLUMNS ?: cfg.terminalWidth ?: 79) as int
 
         colored = (cfg.colored ?: 'true') as boolean
+        strict = (cfg.strict ?: 'false') as boolean
+        warnings = (cfg.warnings ?: 'true') as boolean
         printStatusTimestamps = (cfg."timeline.printTimestamps" ?: 'true') as boolean
 
         stdin = new Scanner(System.in)
@@ -135,8 +143,17 @@ public class TwitterCLI {
                 case ~/reconfigure/: reconfigure(args); break // reconfigure
                 case ~/set/: set(args); break                 // set
                 default:                                      // fallthrough
-                    args.addFirst(command)
-                    get(args)
+                    if (strict) {
+                        log.error(color("Unrecognized command: '$command'", colors.error))
+                    } else {
+                        if (warnings) {
+                            println "Command '$command' unrecognized: " +
+                                "assuming this is a parameter to 'show'"
+                        }
+
+                        args.addFirst(command)
+                        get(args)
+                    }
             }
         }
     }
@@ -227,103 +244,6 @@ public class TwitterCLI {
         }
     }
 
-    public void showTimeline(LinkedList args) {
-
-        String timeline = args.poll() ?: "home"
-        
-        log.debug("Processing a 'show timeline' command, timeline = '{}'",
-            timeline)
-
-        switch (timeline) {
-            // friends
-            case "friends": printTimeline(twitter.friendsTimeline); break
-            // home
-            case "home": printTimeline(twitter.homeTimeline); break
-            // mine
-            case "mine": printTimeline(twitter.userTimeline); break
-            // public
-            case "public": printTimeline(twitter.publicTimeline); break
-            // user
-            case "user":
-                String user = args.poll()
-                if (user) {
-                    if (user.isNumber())
-                        printTimeline(twitter.getUserTimeline(user as int))
-                    else printTimeline(twitter.getUserTimeline(user))
-                } else println color("No user specified.", colors.error)
-                break;
-            default:
-                println color("Unknown timeline: ", colors.error) +
-                    color(timeline, colors.option)
-                break;
-        }
-    }
-
-    public void showUser(LinkedList args) {
-        def user = args.poll()
-
-        log.debug("Processing a 'show user' command, user = '{}'", user)
-    }
-
-    public void createList(LinkedList args) {
-        def option = args.poll()
-
-        switch(option) {
-            case "member": addListMember(args); break
-            case "subscription": addListSubscription(args); break
-            default: args.addFirst(option)
-                createNewList(args); break
-        }
-    }
-
-    /* ======== WORKER FUNCTIONS ========*/
-
-    public void printLists(def lists) {
-        int colSize = 0
-
-        // fins largest indentation needed
-        lists.each { list ->
-            curColSize = list.user.screenName.length() +
-                list.user.slug.length() + list.user.fullName.length() +
-                list.user.id.length()
-                
-            colSize = Math.max(colSize, curColSize)
-        }
-
-        lists.each { list ->
-            col1 = color(list.user.screenName, color.author) + "/" +
-                color("${list.slug} (${list.id})", color.option)
-            println col1.padLeft(colSize) + ": " + list.fullName
-
-            print color("M: ${list.user.memberCount}  S: ${list.user.subscriberCount}".
-                padLeft(2).padRight(colSize - 2), colors.author)
-
-            println wrapToWidth(list.description, terminalWidth,
-                "".padLeft(colSize), "").subtring(colSize)
-        }
-    }
-
-    public void printTimeline(def timeline) {
-
-        log.debug("Printing a timeline: {}", timeline)
-
-        Map formatOptions = [:]
-
-        formatOptions.authorLength = 0
-
-        timeline.each { status ->
-            if (status.user.screenName.length() > formatOptions.authorLength)
-                formatOptions.authorLength = status.user.screenName.length()
-        }
-            
-        formatOptions.indent = "".padLeft(formatOptions.authorLength + 2)
-
-        timeline.eachWithIndex { status, rowNum ->
-            formatOptions.rowNum = rowNum
-            println formatStatus(status, formatOptions)
-        }
-    }
-
     public void showLists(LinkedList args) {
         def user = args.poll()
 
@@ -404,6 +324,104 @@ public class TwitterCLI {
 
         printTimeline(twitter.getUserListStatuses(
             listRef.username, listRef.listId, new Paging()))  // TODO: paging
+    }
+
+    public void showTimeline(LinkedList args) {
+
+        String timeline = args.poll() ?: "home"
+        
+        log.debug("Processing a 'show timeline' command, timeline = '{}'",
+            timeline)
+
+        switch (timeline) {
+            // friends
+            case "friends": printTimeline(twitter.friendsTimeline); break
+            // home
+            case "home": printTimeline(twitter.homeTimeline); break
+            // mine
+            case "mine": printTimeline(twitter.userTimeline); break
+            // public
+            case "public": printTimeline(twitter.publicTimeline); break
+            // user
+            case "user":
+                String user = args.poll()
+                if (user) {
+                    if (user.isNumber())
+                        printTimeline(twitter.getUserTimeline(user as int))
+                    else printTimeline(twitter.getUserTimeline(user))
+                } else println color("No user specified.", colors.error)
+                break;
+            default:
+                println color("Unknown timeline: ", colors.error) +
+                    color(timeline, colors.option)
+                break;
+        }
+    }
+
+    public void showUser(LinkedList args) {
+        def user = args.poll()
+
+        log.debug("Processing a 'show user' command, user = '{}'", user)
+    }
+
+    public void createList(LinkedList args) {
+        def option = args.poll()
+
+        switch(option) {
+            case "member": addListMember(args); break
+            case "subscription": addListSubscription(args); break
+            default: args.addFirst(option)
+                createNewList(args); break
+        }
+    }
+
+    /* ======== WORKER FUNCTIONS ========*/
+
+    public void printLists(def lists) {
+        int colSize = 0
+
+        // fins largest indentation needed
+        lists.each { list ->
+            def curColSize = list.user.screenName.length() +
+                list.slug.length() + list.id.toString().length() + 3
+                
+            colSize = Math.max(colSize, curColSize)
+            println colSize
+        }
+
+        lists.each { list ->
+            println colSize
+            def col1 = color("@${list.user.screenName}", colors.author) + "/" +
+                color("${list.slug} (${list.id})", colors.option)
+
+            println col1.padLeft(colSize) + ": ${list.memberCount} members " +
+                "and ${list.subscriberCount} subscribers"
+
+            println wrapToWidth(list.description, terminalWidth,
+                "".padLeft(8), "")
+            println col1.length()
+        }
+    }
+
+    public void printTimeline(def timeline) {
+
+        log.debug("Printing a timeline: {}", timeline)
+
+        Map formatOptions = [:]
+
+        formatOptions.authorLength = 0
+
+        timeline.each { status ->
+            if (status.user.screenName.length() > formatOptions.authorLength)
+                formatOptions.authorLength = status.user.screenName.length()
+        }
+            
+        formatOptions.indent = "".padLeft(formatOptions.authorLength + 2)
+
+        timeline.eachWithIndex { status, rowNum ->
+            formatOptions.rowNum = rowNum
+            println formatStatus(status, formatOptions)
+        }
     }
 
     public void postStatus(String status) {

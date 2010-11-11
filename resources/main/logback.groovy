@@ -5,15 +5,16 @@ import static ch.qos.logback.classic.Level.*
 
 appender("CONSOLE", ConsoleAppender) {
     encoder(PatternLayoutEncoder) {
-        pattern = "%level %logger - %msg%n"
+        pattern = "%level - %msg%n"
     }
 }
 
 appender("FILE", FileAppender) {
     file="gritter.log"
     encoder(PatternLayoutEncoder) {
-        pattern = "%level %logger - %msg%n"
+        pattern = "%date %level %logger - %msg%n"
     }
 }
 
-logger("com.jdbernard.twitter", TRACE, ["FILE"])
+root(WARN, ["CONSOLE"])
+logger("com.jdbernard.twitter", TRACE, ["FILE"], false)
