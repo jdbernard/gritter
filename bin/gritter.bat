@@ -1,1 +1,1 @@
-ng com.jdbernard.twitter.TwitterCLI %*
+@ng com.jdbernard.twitter.TwitterCLI %*
