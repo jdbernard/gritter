@@ -159,7 +159,29 @@ public class TwitterCLI {
     }
 
     public void delete(LinkedList args) {
+        def option = args.poll()
 
+        log.debug("Processing a 'delete' command, option = {}.", option)
+
+        switch(option) {
+            case "status": deleteStatus(args); break
+            case "list": deleteList(args); break
+            default: args.addFirst(option)
+                deleteStatus(args)
+        }
+    }
+
+    public void deleteList(LinkedList args) {
+        def option = args.poll()
+
+        log.debig("Processing a 'delete list' command, option = {}.", option)
+
+        switch(option) {
+            case "member": deleteListMember(args); break
+            case "subscription": deleteListSubscription(args); break
+            default: args.addFirst(option)
+                doDeleteList(args)
+        }
     }
 
     public void get(LinkedList args) {
@@ -268,8 +290,10 @@ public class TwitterCLI {
             return
         }
 
-        printUserList(twitter.getUserListMembers(
-            listRef.username, listRef.listId, -1)) // TODO paging
+        def userList = twitter.getUserListMembers(listRef.username,
+            listRef.listId, -1)
+
+        printUserList(userList) // TODO paging
     }
 
     public void showListSubscribers(LinkedList args) {
@@ -377,6 +401,84 @@ public class TwitterCLI {
 
     /* ======== WORKER FUNCTIONS ========*/
 
+    public void deleteListMember(LinkedList args) {
+        def listRef = args.poll()
+        def user = args.poll()
+
+        log.debug("Deleting a member from a list: list='{}', user='{}'",
+            listRef, user)
+
+        if (!user) {
+            println color("delete list member", colors.option) +
+                color(" requires two parameters: ", colors.error) +
+                "gritter delete list member <list-ref> <user>"
+            return
+        }
+
+        // parse the list reference
+        listRef = parseListReference(listRef)
+
+        // look up the user id if neccessary
+        if (user.isLong()) user = user as long
+        else user = twitter.showUser(user).id
+
+        twitter.deleteUserListMember(listRef.listId, user)
+    }
+
+    public void deleteListSubscribtion(LinkedList args) {
+        def listRef = args.poll()
+
+        log.debug("Unsubscribing from a list: listRef='{}', user='{}'",
+            listRef, user)
+
+        if (!listRef) {
+            println color("delete list subscription", colors.option) +
+                color(" requires a list reference: ", colors.error) +
+                "gritter delete list subscription <list-ref>"
+            return
+        }
+
+        // parse the list reference
+        listRef = parseListReference(listRef)
+
+        twitter.unsubscribeUserList(listRef.username, listRef.listId)
+    }
+
+    public void doDeleteList(LinkedList args) {
+        def listRef = args.poll()
+
+        log.debug("Destroying a list: listRef='{}'", listRef)
+
+        if (!listRef) {
+            println color("destroy list", colors.option) +
+                color(" requries a list reference: ", colors.error) +
+                "gritter destroy list <list-ref>"
+            return
+        }
+
+        // parse the list reference
+        listRef = parseListReference(listRef)
+
+        twitter.destroyUserList(listRef.listId)
+    }
+
+    public void deleteStatus(LinkedList args) {
+        def statusId = args.poll()
+
+        log.debug("Destroying a status: id='{}'", statusId)
+
+        if (!statusId || !statusId.isLong()) {
+            println color("destroy status", colors.option) +
+                color(" requires a status id: ", colors.error) +
+                "gritter delete status <status-id>"
+            return
+        }
+
+        statusId = statusId as long
+
+        twitter.destroyStatus(statusId)
+    }
+
     public void printLists(def lists) {
         int colSize = 0
 
@@ -386,11 +488,11 @@ public class TwitterCLI {
                 list.slug.length() + list.id.toString().length() + 3
                 
             colSize = Math.max(colSize, curColSize)
-            println colSize
+            //println colSize //TODO, fix column alignment
         }
 
         lists.each { list ->
-            println colSize
+            //println colSize
             def col1 = color("@${list.user.screenName}", colors.author) + "/" +
                 color("${list.slug} (${list.id})", colors.option)
 
@@ -399,7 +501,18 @@ public class TwitterCLI {
 
             println wrapToWidth(list.description, terminalWidth,
                 "".padLeft(8), "")
-            println col1.length()
+            //println col1.length()
+        }
+    }
+
+    public void printUserList(def users) {
+        int colSize = 0
+        colSize = users.inject(0) {
+            curMax, user -> Math.max(curMax, user.id.toString().length()) }
+
+        users.each { user ->
+            println "${user.id.toString().padLeft(colSize)} - " +
+                color(user.screenName, colors.author) + ": ${user.name}"
         }
     }
 
@@ -474,10 +587,9 @@ public class TwitterCLI {
     public void addListMember(LinkedList args) {
         def listRef = args.poll()
         def user = args.poll()
-        def list
 
         log.debug("Adding a member to a list: list='{}', user='{}'",
-            list, user)
+            listRef, user)
 
         if (!user) {
             println color("add list member", colors.option) +
@@ -486,21 +598,19 @@ public class TwitterCLI {
             return
         }
 
-        // look up the list id if neccessary
-        if (listRef.isInteger()) listRef = listRef as int
-        else list = findListByName(twitter.screenName, listRef)
-
-        if (!list) {
+        if (!listRef) {
             println color("No list found that matches the given description: ",
                 colors.error) + color(listRef, colors.option)
             return 
         }
 
+        listRef = parseListReference(listRef)
+
         // look up the user id if neccessary
         if (user.isLong()) user = user as long
         else user = twitter.showUser(user).id
 
-        twitter.addUserListMember(list, user)
+        twitter.addUserListMember(listRef.ListId, user)
 
     }
 

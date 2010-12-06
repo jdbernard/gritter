@@ -39,14 +39,14 @@
                 *listuser*/*list id*
 [X]         *listName*, *isPublic*, *description*
 
-[ ] delete/destroy/remove
-[ ]     status
-[ ]         *status_id*
-[ ]     list
-[ ]         member
-[ ]             *list id* || *list name*, *user id*
-[ ]         subscription
-[ ]         *list id*
+[X] delete/destroy/remove
+[X]     status
+[X]         *status_id*
+[X]     list
+[X]         member
+[X]             *list id* || *list name*, *user id*
+[X]         subscription
+[X]         *list id*
 
 [ ] follow
 [ ]     *user*
