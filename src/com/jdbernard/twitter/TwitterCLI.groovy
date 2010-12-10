@@ -402,7 +402,7 @@ public class TwitterCLI {
     /* ======== WORKER FUNCTIONS ========*/
 
     public void deleteListMember(LinkedList args) {
-        def listRef = args.poll()
+        def listRef = parseListReference(args)
         def user = args.poll()
 
         log.debug("Deleting a member from a list: list='{}', user='{}'",
@@ -415,9 +415,6 @@ public class TwitterCLI {
             return
         }
 
-        // parse the list reference
-        listRef = parseListReference(listRef)
-
         // look up the user id if neccessary
         if (user.isLong()) user = user as long
         else user = twitter.showUser(user).id
@@ -426,7 +423,7 @@ public class TwitterCLI {
     }
 
     public void deleteListSubscribtion(LinkedList args) {
-        def listRef = args.poll()
+        def listRef = parseListReference(args)
 
         log.debug("Unsubscribing from a list: listRef='{}', user='{}'",
             listRef, user)
@@ -438,14 +435,11 @@ public class TwitterCLI {
             return
         }
 
-        // parse the list reference
-        listRef = parseListReference(listRef)
-
         twitter.unsubscribeUserList(listRef.username, listRef.listId)
     }
 
     public void doDeleteList(LinkedList args) {
-        def listRef = args.poll()
+        def listRef = parseListReference(args)
 
         log.debug("Destroying a list: listRef='{}'", listRef)
 
@@ -455,9 +449,6 @@ public class TwitterCLI {
                 "gritter destroy list <list-ref>"
             return
         }
-
-        // parse the list reference
-        listRef = parseListReference(listRef)
 
         twitter.destroyUserList(listRef.listId)
     }
@@ -585,7 +576,7 @@ public class TwitterCLI {
     }
 
     public void addListMember(LinkedList args) {
-        def listRef = args.poll()
+        def listRef = parseListReference(args)
         def user = args.poll()
 
         log.debug("Adding a member to a list: list='{}', user='{}'",
@@ -604,13 +595,11 @@ public class TwitterCLI {
             return 
         }
 
-        listRef = parseListReference(listRef)
-
         // look up the user id if neccessary
         if (user.isLong()) user = user as long
         else user = twitter.showUser(user).id
 
-        twitter.addUserListMember(listRef.ListId, user)
+        twitter.addUserListMember(listRef.listId, user)
 
     }
 
