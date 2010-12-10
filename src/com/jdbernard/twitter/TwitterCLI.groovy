@@ -29,6 +29,11 @@ public class TwitterCLI {
 
     private Logger log = LoggerFactory.getLogger(getClass())
 
+
+    /* ============================================= */
+    /* ======== MAIN METHODS - Entry points ======== */
+    /* ============================================= */
+
     public static void main(String[] args) {
         TwitterCLI inst = new TwitterCLI(new File(System.getProperty("user.home"),
             ".gritterrc"))
@@ -51,6 +56,10 @@ public class TwitterCLI {
         nailgunInst.run((context.args as List) as LinkedList)
     }
 
+    /* ===================================== */
+    /* ======== CONFIGURATION/SETUP ======== */
+    /* ===================================== */
+
     public static void reconfigure(LinkedList args) {
         if (nailgunInst == null) main(args as String[])
         else {
@@ -62,41 +71,6 @@ public class TwitterCLI {
         }
     }
 
-    static String wrapToWidth(String text, int width, String prefix, String suffix) {
-        int lastSpaceIdx = 0;
-        int curLineLength = 0;
-        int lineStartIdx = 0;
-        int i = 0;
-        int actualWidth = width - prefix.length() - suffix.length()
-        String wrapped = ""
-
-        text = text.replaceAll("[\n\r]", " ")
-
-        for (i = 0; i < text.length(); i++) {
-
-            curLineLength++
-            if (curLineLength > actualWidth) {
-                
-                if (lastSpaceIdx == -1) // we haven't seen a space on this line
-                    lastSpaceIdx = lineStartIdx + actualWidth - 1
-
-                wrapped += prefix + text[lineStartIdx..<lastSpaceIdx] + suffix + EOL
-                curLineLength = 0
-                lineStartIdx = lastSpaceIdx + 1
-                i = lastSpaceIdx + 1
-                lastSpaceIdx = -1
-            }
-
-            if (text.charAt(i).isWhitespace())
-                lastSpaceIdx = i
-        }
-
-        if (i - lineStartIdx > 1)
-            wrapped += prefix + text[lineStartIdx..<text.length()]
-
-        return wrapped
-    }
-    
     public TwitterCLI(File propFile) {
 
         // load the configuration
@@ -125,8 +99,68 @@ public class TwitterCLI {
         stdin = new Scanner(System.in)
     }
 
-    /* ======== PARSING FUNCTIONS ========*/
+    /* =================================== */
+    /* ======== PARSING FUNCTIONS ======== */
+    /* =================================== */
 
+    /**
+     | Main entry to the command line parsing system. In general, the parsing
+     | system (this method and the others dedicated to parsing arguments)
+     | follow some common conventions:
+     | 
+     | 1.  An argument is either considered a *command* or a *parameter*.
+     | 2.  Arguments are parsed in order.
+     | 3.  A command can have aliases to make invokation read naturally.
+     | 4.  A command may expect further refining commands, one of which
+     |     will be the default. So if a command has possible refining
+     |     commands, but the next argument does not match any of them,
+     |     the default will be assumed and the current argument will not
+     |     be comsumed, but passed on to the refining command.
+     |
+     | For example: ::
+     |
+     |     gritter set colored off show mine
+     |
+     | is parsed: 
+     |
+     | *  the first argument is expected to be a command
+     | *  the ``set`` command consumes two arguments, expecting both to
+     |    be parameters
+     | *  the set command is finished, but there are still arguments, so the
+     |    parsing process starts again, expecting the next argument to be a
+     |    command.
+     | *  the ``show`` command consumes one argument and expects a command
+     | *  ``mine`` does not match any of the possible refinements for ``show`` so
+     |    the default command, `timeline`, is assumed.
+     | *  the `show timeline` command consumes one argument, expecting a command
+     | *  The `show timeline mine` command executes
+     | *  No more arguments remain, so execution terminates.
+     |
+     | Recognized top-level commands are:
+     |
+     | +-----------------+-------------------+----------------------------+
+     | | *Command*       | *Aliases*         | *Description*              |
+     | +-----------------+-------------------+----------------------------+
+     | | ``delete``      | ``destroy``,      | Delete a post, status, list|
+     | |                 | ``remove``        | membership, etc.           |
+     | +-----------------+-------------------+----------------------------+
+     | | ``get``         | ``show``          | Display a list, timeline,  |
+     | |                 |                   | list membership, etc.      |
+     | +-----------------+-------------------+----------------------------+
+     | | ``help``        |                   | Display help for commands  |
+     | +-----------------+-------------------+----------------------------+
+     | | ``post``        | `add`, ``create`` | Post a new status, add a   |
+     | |                 |                   | new list subscription, etc.|
+     | +-----------------+-------------------+----------------------------+
+     | | ``reconfigure`` |                   | Cause the tool to reload   |
+     | |                 |                   | its configuration file.    |
+     | +-----------------+-------------------+----------------------------+
+     | | ``set``         |                   | Set a configurable value   |
+     | |                 |                   | at runtime.                |
+     | +-----------------+-------------------+----------------------------+
+     |
+     | @param args A {@link java.util.LinkedList} of arguments to parse.
+     */
     public void run(LinkedList args) {
         if (args.size() < 1) printUsage()
 
@@ -158,6 +192,22 @@ public class TwitterCLI {
         }
     }
 
+    /* -------- DELETE Subparsing -------- */
+
+    /**
+     | Parse a ``delete`` command. Valid options are:
+     |
+     | +-------------+--------------------------------------------------+
+     | | *Argument*  | *Description*                                    |
+     | +-------------+--------------------------------------------------+
+     | | ``status``  | Destroy a status given a status id. *This is the |
+     | |             | default command.*                                |
+     | +-------------+--------------------------------------------------+
+     | | ``list``    | Delete a list, remove list members, etc.         |
+     | +-------------+--------------------------------------------------+
+     |
+     | @param args A {@link java.util.LinkedList} of arguments.
+     */
     public void delete(LinkedList args) {
         def option = args.poll()
 
@@ -171,6 +221,21 @@ public class TwitterCLI {
         }
     }
 
+    /**
+     | Parse a ``delete list`` command. Valid options are:
+     |
+     | +------------------+---------------------------------------------+
+     | | *Argument*       | *Description*                               |
+     | +------------------+---------------------------------------------+
+     | | ``member``       | Remove a member from a list.                |
+     | +------------------+---------------------------------------------+
+     | | ``subscription`` | Unsubcribe from a given list.               |
+     | +------------------+---------------------------------------------+
+     | | *list-reference* | Delete the list specified by the reference. |
+     | +------------------+---------------------------------------------+
+     |
+     | @param args A {@link java.util.LinkedList} of arguments.
+     */
     public void deleteList(LinkedList args) {
         def option = args.poll()
 
@@ -184,7 +249,31 @@ public class TwitterCLI {
         }
     }
 
-    public void get(LinkedList args) {
+    /* -------- GET/SHOW Subparsing -------- */
+
+
+    /**
+     | Parse a ``get`` command. Valid options are:
+     |
+     | +-------------------+-------------------------------------------------+
+     | | *Argument*        | *Description*                                   |
+     | +-------------------+-------------------------------------------------+
+     | | ``list``          | Show a list timeline, members, subs, etc.       |
+     | +-------------------+-------------------------------------------------+
+     | | ``lists``         | Show lists all lists owned by a given user      |
+     | +-------------------+-------------------------------------------------+
+     | | ``subscriptions`` | Show all of the lists a given user is subcribed |
+     | |                   | to.                                             |
+     | +-------------------+-------------------------------------------------+
+     | | ``timeline``      | Show a timeline of tweets. *This is the default |
+     | |                   | command.*                                       |
+     | +-------------------+-------------------------------------------------+
+     | | ``user``          | Show information about a given users.           |
+     | +-------------------+-------------------------------------------------+
+     |
+     | @param args A {@link java.util.LinkedList} of arguments.
+     */
+     public void get(LinkedList args) {
         def option = args.poll()
 
         log.debug("Processing a 'get' command, option = {}.", option)
@@ -200,58 +289,26 @@ public class TwitterCLI {
         }
     }
 
-    public void help(LinkedList args) {
-
-        log.debug("Processing a 'help' command.")
-    }
-
-    public void post(LinkedList args) {
-        def option = args.poll()
-
-        log.debug("Processing a 'post' command: option = '{}'", option)
-
-        if (!option) {
-            println color("post", colors.option) +
-                color(" command requires at least two parameters: ",
-                colors.error) + "gritter post <status|retweet|list> " +
-                "<options>..."
-            return
-        }
-
-        switch (option) {
-            case "status": postStatus(args.poll()); break
-            case "retweet": retweetStatus(args.poll()); break
-            case "list": createList(args); break
-            default: postStatus(option)
-        }
-    }
-
-    public void set(LinkedList args) {
-        def option = args.poll()
-        def value = args.poll()
-
-        log.debug("Processing a 'set' command: option = '{}', value = '{}'",
-            option, value)
-
-        if (!value) {   // note: if option is null, value is null
-            println color("set", colors.option) +
-                color(" command requires two options: ", colors.error) +
-                "gritter set <param> <value>"
-            return
-        }
-
-        switch (option) {
-            case "terminalWidth": terminalWidth = value as int; break
-            case "colored": colored = value.toLowerCase() ==~ /true|t|on|yes|y/
-                break
-
-            default:
-                println color("No property named ", colors.error) +
-                    color(option, colors.option) +
-                    color(" exists.", colors.error)
-        }
-    }
-
+    /**
+     | Parse a ``show list`` command. Valid options are:
+     |
+     | +--------------------+-----------------------------------------------+
+     | | *Argument*         | *Description*                                 |
+     | +--------------------+-----------------------------------------------+
+     | | ``members``        | Show the members of a given list. This is the |
+     | |                    | list of users who's tweets comprise the list. |
+     | +--------------------+-----------------------------------------------+
+     | | ``subscribers``    | Show the subscribers of a given list. This is |
+     | |                    | the list of users who are see the list.       |
+     | +--------------------+-----------------------------------------------+
+     | | ``subscriptions``  | Show all of the lists a given user is         |
+     | |                    | subscribed to.                                |
+     | +--------------------+-----------------------------------------------+
+     | | *list-reference*   | Show the timeline for a given list.           |
+     | +--------------------+-----------------------------------------------+
+     |
+     | @param args a {@link java.util.LinkedList} of arguments.
+     */
     public void showList(LinkedList args) {
         def option = args.poll()
 
@@ -266,6 +323,14 @@ public class TwitterCLI {
         }
     }
 
+    /**
+     | Parse a ``show lists`` command. ``show lists`` consumes at most one
+     | argument, representing a user reference. It shows all of the lists
+     | owned by the given user. If no user reference is given ``show lists``
+     | shows the lists owned by the currently logged in user. 
+     |
+     | @param args a {@link java.util.LinkedList} of arguments.
+     */
     public void showLists(LinkedList args) {
         def user = args.poll()
 
@@ -276,6 +341,12 @@ public class TwitterCLI {
         printLists(twitter.getUserLists(user, -1)) // TODO paging
     }
 
+    /**
+     | Parse a ``show list members`` command. ``show list members`` consumes
+     | one argument, a reference to the list in question.
+     |
+     | @param args a {@util java.util.LinkedList} of arguments.
+     */
     public void showListMembers(LinkedList args) {
         def listRef = parseListReference(args)
 
@@ -296,6 +367,12 @@ public class TwitterCLI {
         printUserList(userList) // TODO paging
     }
 
+    /**
+     | Parse a ``show list subscribers`` command. ``show list subscribers
+     | consumes one argument, a reference to the list in question.
+     |
+     | @param args a {@util java.util.LinkedList} of arguments.
+     */
     public void showListSubscribers(LinkedList args) {
         def listRef = parseListReference(args)
 
@@ -314,6 +391,12 @@ public class TwitterCLI {
             listRef.username, listRef.listId, -1))  // TODO: paging
     }
 
+    /**
+     | Parse a ``show list members`` command. ``show list members consumes one
+     | argument, a reference to the list in question.
+     |
+     | @param args a {@util java.util.LinkedList} of arguments.
+     */
     public void showListSubscriptions(LinkedList args) {
         def user = args.poll()
 
@@ -396,6 +479,58 @@ public class TwitterCLI {
             case "subscription": addListSubscription(args); break
             default: args.addFirst(option)
                 createNewList(args); break
+        }
+    }
+
+    public void help(LinkedList args) {
+
+        log.debug("Processing a 'help' command.")
+    }
+
+    public void post(LinkedList args) {
+        def option = args.poll()
+
+        log.debug("Processing a 'post' command: option = '{}'", option)
+
+        if (!option) {
+            println color("post", colors.option) +
+                color(" command requires at least two parameters: ",
+                colors.error) + "gritter post <status|retweet|list> " +
+                "<options>..."
+            return
+        }
+
+        switch (option) {
+            case "status": postStatus(args.poll()); break
+            case "retweet": retweetStatus(args.poll()); break
+            case "list": createList(args); break
+            default: postStatus(option)
+        }
+    }
+
+    public void set(LinkedList args) {
+        def option = args.poll()
+        def value = args.poll()
+
+        log.debug("Processing a 'set' command: option = '{}', value = '{}'",
+            option, value)
+
+        if (!value) {   // note: if option is null, value is null
+            println color("set", colors.option) +
+                color(" command requires two options: ", colors.error) +
+                "gritter set <param> <value>"
+            return
+        }
+
+        switch (option) {
+            case "terminalWidth": terminalWidth = value as int; break
+            case "colored": colored = value.toLowerCase() ==~ /true|t|on|yes|y/
+                break
+
+            default:
+                println color("No property named ", colors.error) +
+                    color(option, colors.option) +
+                    color(" exists.", colors.error)
         }
     }
 
@@ -731,4 +866,38 @@ public class TwitterCLI {
         return color.toString() + message + (existing ?: resetColor())
     }
 
+    static String wrapToWidth(String text, int width, String prefix, String suffix) {
+        int lastSpaceIdx = 0;
+        int curLineLength = 0;
+        int lineStartIdx = 0;
+        int i = 0;
+        int actualWidth = width - prefix.length() - suffix.length()
+        String wrapped = ""
+
+        text = text.replaceAll("[\n\r]", " ")
+
+        for (i = 0; i < text.length(); i++) {
+
+            curLineLength++
+            if (curLineLength > actualWidth) {
+                
+                if (lastSpaceIdx == -1) // we haven't seen a space on this line
+                    lastSpaceIdx = lineStartIdx + actualWidth - 1
+
+                wrapped += prefix + text[lineStartIdx..<lastSpaceIdx] + suffix + EOL
+                curLineLength = 0
+                lineStartIdx = lastSpaceIdx + 1
+                i = lastSpaceIdx + 1
+                lastSpaceIdx = -1
+            }
+
+            if (text.charAt(i).isWhitespace())
+                lastSpaceIdx = i
+        }
+
+        if (i - lineStartIdx > 1)
+            wrapped += prefix + text[lineStartIdx..<text.length()]
+
+        return wrapped
+    }
 }
