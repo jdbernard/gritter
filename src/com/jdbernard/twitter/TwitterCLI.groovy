@@ -469,6 +469,9 @@ public class TwitterCLI {
         def user = args.poll()
 
         log.debug("Processing a 'show user' command, user = '{}'", user)
+
+        println color("show user", colors.option) +
+            color(" is not yet implemented.", colors.error)
     }
 
     public void createList(LinkedList args) {
@@ -485,6 +488,11 @@ public class TwitterCLI {
     public void help(LinkedList args) {
 
         log.debug("Processing a 'help' command.")
+
+        // TODO: this being unimplemented really hurts the discoverability and
+        // useability of the tool, FIXME ASAP.
+        println color("help", colors.option) +
+            color(" is not yet implemented.", colors.error)
     }
 
     public void post(LinkedList args) {
