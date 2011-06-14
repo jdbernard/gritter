@@ -563,6 +563,10 @@ public class TwitterCLI {
         else user = twitter.showUser(user).id
 
         twitter.deleteUserListMember(listRef.listId, user)
+
+        // TODO: error checking? print list name?
+        println "Deleted " + color("@$user", colors.mentioned) +
+            " from your list."
     }
 
     public void deleteListSubscribtion(LinkedList args) {
@@ -579,6 +583,10 @@ public class TwitterCLI {
         }
 
         twitter.unsubscribeUserList(listRef.username, listRef.listId)
+
+        // TODO: error checking?
+        println "Unsubscribed from list: " + color(listRef.toString(),
+            colors.option)
     }
 
     public void doDeleteList(LinkedList args) {
@@ -593,7 +601,19 @@ public class TwitterCLI {
             return
         }
 
-        twitter.destroyUserList(listRef.listId)
+        println "Really destroy list '" + color(listRef.toString(),
+           colors.option) + "' ?"
+        if (stdin.nextLine() ==~ /yes|y|true|t/) {
+            try {
+                twitter.destroyUserList(listRef.listId)
+                println "List destroyed."
+            } catch (Exception e) {
+                println "An error occurred trying to delete the list: '" +
+                    e.localizedMessage
+                log.error("Error destroying list:", e)
+            }
+        } else println "Destroy list canceled."
+ 
     }
 
     public void deleteStatus(LinkedList args) {
@@ -610,7 +630,18 @@ public class TwitterCLI {
 
         statusId = statusId as long
 
-        twitter.destroyStatus(statusId)
+        println "Really destroy status '" + color(statusId.toString(),
+           colors.option) + "' ?"
+        if (stdin.nextLine() ==~ /yes|y|true|t/) {
+            try {
+                twitter.destroyStatus(statusId)
+                println "Status destroyed."
+            } catch (Exception e) {
+                println "An error occurred trying to destroy the status: '" +
+                    e.localizedMessage
+                log.error("Error destroying status:", e)
+            }
+        } else println "Destroy status canceled."
     }
 
     public void printLists(def lists) {
@@ -714,8 +745,10 @@ public class TwitterCLI {
         def status = twitter.showStatus(statusId)
 
         println "Retweet '" + color(status.text, colors.odd) + "'? "
-        if (stdin.nextLine() ==~ /yes|y|true|t/)
+        if (stdin.nextLine() ==~ /yes|y|true|t/) {
             twitter.retweetStatus(statusId)
+            println "Status retweeted."
+        } else { println "Retweet cancelled." }
     }
 
     public void addListMember(LinkedList args) {
@@ -744,6 +777,8 @@ public class TwitterCLI {
 
         twitter.addUserListMember(listRef.listId, user)
 
+        // TODO: error checking?
+        println "Added list member."
     }
 
     public void addListSubscription(LinkedList args) {
@@ -759,6 +794,9 @@ public class TwitterCLI {
         }
 
         twitter.subscribeUserList(listRef.username, listRef.listId)
+
+        // TODO: error checking?
+        println "Subscribed to list."
     }
     
     public void createNewList(LinkedList args) {
@@ -777,8 +815,10 @@ public class TwitterCLI {
         }
 
         println "Create list '${color(list, colors.option)}'?"
-        if (stdin.nextLine() ==~ /yes|y|true|t/)
+        if (stdin.nextLine() ==~ /yes|y|true|t/) {
             twitter.createUserList(name, isPublic ==~ /yes|y|true|t/, desc)
+            println "List created."
+        } else { println "List creation cancelled." }
     }
 
     public def parseListReference(LinkedList args) {
