@@ -239,7 +239,7 @@ public class TwitterCLI {
     public void deleteList(LinkedList args) {
         def option = args.poll()
 
-        log.debig("Processing a 'delete list' command, option = {}.", option)
+        log.debug("Processing a 'delete list' command, option = {}.", option)
 
         switch(option) {
             case "member": deleteListMember(args); break
