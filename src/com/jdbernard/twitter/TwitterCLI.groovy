@@ -27,6 +27,8 @@ public class TwitterCLI {
     private boolean strict
     private boolean warnings
 
+    private static final VERSION = 1.0
+
     private Logger log = LoggerFactory.getLogger(getClass())
 
 
@@ -485,16 +487,6 @@ public class TwitterCLI {
         }
     }
 
-    public void help(LinkedList args) {
-
-        log.debug("Processing a 'help' command.")
-
-        // TODO: this being unimplemented really hurts the discoverability and
-        // useability of the tool, FIXME ASAP.
-        println color("help", colors.option) +
-            color(" is not yet implemented.", colors.error)
-    }
-
     public void post(LinkedList args) {
         def option = args.poll()
 
@@ -814,12 +806,168 @@ public class TwitterCLI {
             return 
         }
 
-        println "Create list '${color(list, colors.option)}'?"
+        println "Create list '${color(name, colors.option)}'?"
         if (stdin.nextLine() ==~ /yes|y|true|t/) {
             twitter.createUserList(name, isPublic ==~ /yes|y|true|t/, desc)
             println "List created."
         } else { println "List creation cancelled." }
     }
+
+    /* ======== HELP DISPLAY FUNCTIONS ======== */
+
+    public void help(LinkedList args) {
+
+        log.debug("Processing a 'help' command.")
+
+        def command = args.poll()
+        if (command != null) {
+            switch (command.toLowerCase()) {
+                case ~/delete|destroy|remove/: helpDelete(); break
+                case ~/get|show/: helpGet(); break            // get|show
+                case ~/help/: helpHelp(); break                   // help
+                case ~/post|add|create/: helpPost(); break    // post|add|create
+                case ~/reconfigure/: helpReconfigure(); break // reconfigure
+                case ~/set/: helpSet(); break                 // set
+                case~/list-reference/: helpListReference(); break // list-reference
+                default:                                          // fallthrough
+                    print color("Not a valid command: ", colors.error)
+                    println color(command, colors.option)
+                    break;
+            }
+        } else { 
+            println "Gritter v${VERSION} -- A command-line twitter client."
+            println "Author: Jonathan Bernard <jdbernard@gmail.com>"
+            println "Website: https://www.github.com/jdbernard/gritter"
+            println ""
+            println "usage: " + color("gritter <command> ...", colors.option)
+            println ""
+            println "Valid commands (with interchangable aliases):"
+            println "   delete (destroy, remove)"
+            println "   get (show)"
+            println "   help"
+            println "   post (add, create)"
+            println "   reconfigure"
+            println "   set"
+            println ""
+            println "use " + color("gritter help <command>", colors.option) +
+                "for more information about a \nspecific command."
+            println ""
+        }
+    }
+
+    public void helpDelete() {
+
+        println color("gritter delete ...", colors.option)
+        println ""
+        println "Valid uses:"
+        println ""
+        println "  Destroy a status (tweet) by id:"
+        println "    gritter destroy <status-id>"
+        println "    gritter destroy status <status-id>"
+        println ""
+        println "  Destroy a list:"
+        println "    gritter destroy list <list-reference>"
+        println ""
+        println "  Remove a user from a list (stop following them in that list):"
+        println "    gritter remove list member <list-reference> <username>"
+        println ""
+        println "  Delete list subscription (stop following the list):"
+        println "    gritter delete list subscription <list-reference>"
+        println ""
+        println "For more information about list references, use "
+        println color("gritter help list-reference", colors.option)
+    }
+
+    public void helpGet() {
+
+        println color("gritter get ...", colors.option)
+        println ""
+        println "Valid uses:"
+        println ""
+        println "  View a timeline:"
+        println "    gritter show [timeline] (friends|home|mine|public|user <user-id>)"
+        println ""
+        println "  View available lists for a user (defaults to current user):"
+        println "    gritter show lists"
+        println "    gritter show lists <user-id>"
+        println ""
+        println "  View a specific list (see the recent tweets):"
+        println "    gritter show list <list-reference>"
+        println ""
+        // TODO
+        //println "  View your current list subscriptions:"
+        //println "    gritter show list subscriptions"
+        //println ""
+        println "  View user information:"
+        println "    gritter show user <user-id>"
+        println ""
+    }
+
+    public void helpHelp() {
+
+        println color("gritter help <command>", colors.option)
+        println ""
+        println "Show usage information about a specific gritter command."
+        println ""
+
+    }
+
+    public void helpPost() {
+
+        println color("gritter post ...", colors.option)
+        println ""
+        println "Valid uses:"
+        println ""
+        println "  Post a status update (tweet):"
+        println "    gritter post <message>"
+        println "    gritter post status <message>"
+        println ""
+        println "  Retweet a status:"
+        println "    gritter post retweet <status-id>"
+        println ""
+        println "  Create a new list:"
+        println "    gritter create list <list-name> <is-public?> <description>"
+        println ""
+        println "  Add a user to a list:"
+        println "    gritter add list member <list-reference> <user-id>"
+        println ""
+        println "  Subscribe to a list:"
+        println "    gritter add list subscription <list-reference>"
+        println ""
+    }
+
+    public void helpReconfigure() {
+        
+        println color("gritter reconfigure", colors.option)
+        println ""
+        println "Causes gritter to release resources, forget variables set"
+        println "manually and reload it's configuration file."
+        println ""
+    }
+
+    public void helpSet() {
+
+        println color("gritter set <key> <value>", colors.option)
+        println ""
+        println "Sets a configuration value manually. Configurable values are:"
+        println ""
+        println "  terminalWidth <integer> Gritter wraps its output to fit "
+        println "                          within this width."
+        println ""
+        println "  colored       <boolean> Should gritter's output be in color?"
+        println "                          yes,no,true,false are all valid."
+        println ""
+    }
+
+    public void helpListReference() {
+        println "  a ${color('<list-reference>', colors.option)} is defined as:"
+        println "    ${color('[<username>/]<list-id>', colors.option)}" +
+                                          "where username is optional (defaults"
+        println "    to the current user) and list-id may be the list name or "
+        println "    internal id number."
+        println ""
+    }
+    /* ======== UTILITY FUNCTIONS ======== */
 
     public def parseListReference(LinkedList args) {
         def username = args.poll()
