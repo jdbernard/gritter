@@ -1,3 +1,9 @@
+/**
+ * # TwitterCLI
+ * @author Jonathan Bernard (jdbernard@gmail.com)
+ * @org jdbernard.com/twitter/TwitterCLI
+ * @copyright 2010-2012 Jonathan Bernard
+ */
 package com.jdbernard.twitter
 
 import com.martiansoftware.nailgun.NGContext
@@ -10,6 +16,11 @@ import twitter4j.TwitterFactory
 import twitter4j.conf.Configuration
 import twitter4j.conf.PropertyConfiguration
 
+/**
+ * TwitterCLI is a command-line interface (CLI) to the [Twitter API]. 
+ *
+ * [Twitter API]: https://dev.twitter.com/docs
+ */
 public class TwitterCLI {
 
     private static String EOL = System.getProperty("line.separator")
@@ -32,19 +43,30 @@ public class TwitterCLI {
     private Logger log = LoggerFactory.getLogger(getClass())
 
 
-    /* ============================================= */
-    /* ======== MAIN METHODS - Entry points ======== */
-    /* ============================================= */
+    /// ## Main Methods ##
+    /// ------------------
 
+    /**
+     * #### main
+     * This is the main entry-point to the client. 
+     * @org jdbernard.com/twitter/TwitterCLI/main
+     */
     public static void main(String[] args) {
         TwitterCLI inst = new TwitterCLI(new File(System.getProperty("user.home"),
             ".gritterrc"))
 
-        // trim the last argumnet, not all cli's are well-behaved
+        // trim the last argumnet, as not all cli's are well-behaved
         args[-1] = args[-1].trim()
-        inst.run((args as List) as LinkedList)
-    }
+        inst.run((args as List) as LinkedList) }
 
+    /**
+     * #### nailMain
+     * This is the entry point when the client is called from a [Nailgun]
+     * instance.
+     *
+     * [Nailgun]: http://www.martiansoftware.com/nailgun/
+     * @org jdbernard.com/twitter/TwitterCLI/nailMain
+     */
     public static void nailMain(NGContext context) {
         if (nailgunInst == null)
             nailgunInst = new TwitterCLI(new File(
@@ -52,16 +74,20 @@ public class TwitterCLI {
         else 
             nailgunInst.stdin = new Scanner(context.in)
 
-        // trim the last argumnet, not all cli's are well-behaved
+        // trim the last argumnet, as not all cli's are well-behaved
         context.args[-1] = context.args[-1].trim()
 
-        nailgunInst.run((context.args as List) as LinkedList)
-    }
+        nailgunInst.run((context.args as List) as LinkedList) }
 
-    /* ===================================== */
-    /* ======== CONFIGURATION/SETUP ======== */
-    /* ===================================== */
+    /// ## Configuration and Setup ##
+    /// -----------------------------
 
+    /**
+     * #### reconfigure
+     * Reload the configuration and pass the rest of the arguments back to be
+     * processed.
+     * @org jdbernard.com/twitter/TwitterCLI/reconfigure
+     */
     public static void reconfigure(LinkedList args) {
         if (nailgunInst == null) main(args as String[])
         else {
@@ -69,10 +95,12 @@ public class TwitterCLI {
             nailgunInst = new TwitterCLI(new File(
                 System.getProperty("user.home"), ".gritterrc"))
 
-            nailgunInst.run(args)
-        }
-    }
+            nailgunInst.run(args) }}
 
+    /**
+     * #### TwitterCLI
+     * Initialize this instance based on the given configuration file.
+     */
     public TwitterCLI(File propFile) {
 
         // load the configuration
@@ -101,11 +129,11 @@ public class TwitterCLI {
         stdin = new Scanner(System.in)
     }
 
-    /* =================================== */
-    /* ======== PARSING FUNCTIONS ======== */
-    /* =================================== */
+    /// ## Parsing Functions ##
+    /// -----------------------
 
     /**
+     | #### run
      | Main entry to the command line parsing system. In general, the parsing
      | system (this method and the others dedicated to parsing arguments)
      | follow some common conventions:
@@ -119,49 +147,49 @@ public class TwitterCLI {
      |     the default will be assumed and the current argument will not
      |     be comsumed, but passed on to the refining command.
      |
-     | For example: ::
+     | For example:
      |
      |     gritter set colored off show mine
      |
      | is parsed: 
      |
      | *  the first argument is expected to be a command
-     | *  the ``set`` command consumes two arguments, expecting both to
+     | *  the `set` command consumes two arguments, expecting both to
      |    be parameters
      | *  the set command is finished, but there are still arguments, so the
      |    parsing process starts again, expecting the next argument to be a
      |    command.
-     | *  the ``show`` command consumes one argument and expects a command
-     | *  ``mine`` does not match any of the possible refinements for ``show`` so
+     | *  the `show` command consumes one argument and expects a command
+     | *  `mine` does not match any of the possible refinements for `show` so
      |    the default command, `timeline`, is assumed.
      | *  the `show timeline` command consumes one argument, expecting a command
      | *  The `show timeline mine` command executes
      | *  No more arguments remain, so execution terminates.
-     |
+     |  
      | Recognized top-level commands are:
      |
-     | +-----------------+-------------------+----------------------------+
-     | | *Command*       | *Aliases*         | *Description*              |
-     | +-----------------+-------------------+----------------------------+
-     | | ``delete``      | ``destroy``,      | Delete a post, status, list|
-     | |                 | ``remove``        | membership, etc.           |
-     | +-----------------+-------------------+----------------------------+
-     | | ``get``         | ``show``          | Display a list, timeline,  |
-     | |                 |                   | list membership, etc.      |
-     | +-----------------+-------------------+----------------------------+
-     | | ``help``        |                   | Display help for commands  |
-     | +-----------------+-------------------+----------------------------+
-     | | ``post``        | `add`, ``create`` | Post a new status, add a   |
-     | |                 |                   | new list subscription, etc.|
-     | +-----------------+-------------------+----------------------------+
-     | | ``reconfigure`` |                   | Cause the tool to reload   |
-     | |                 |                   | its configuration file.    |
-     | +-----------------+-------------------+----------------------------+
-     | | ``set``         |                   | Set a configurable value   |
-     | |                 |                   | at runtime.                |
-     | +-----------------+-------------------+----------------------------+
+     | `delete`
+     | :   Delete a post, status, list membership, etc.  
+     |     *aliases: `destroy`, `remove`.*  
      |
-     | @param args A {@link java.util.LinkedList} of arguments to parse.
+     | `get`
+     | :   Display a list, timeline, list membership, etc.  
+     |     *aliases: `show`.*
+     |
+     | `help`
+     | :   Display help for commands.
+     |
+     | `post`
+     | :   Post a new status, add a new list subscription, etc.  
+     |     *aliases: `add`, `create`.* 
+     |
+     | `reconfigure`
+     | :   Cause the tool to reload its configuration file.
+     |
+     | `set`
+     | :   Set a configurable value at runtime.
+     |
+     | `@param args A {@link java.util.LinkedList} of arguments to parse.`
      */
     public void run(LinkedList args) {
         if (args.size() < 1) printUsage()
@@ -180,35 +208,29 @@ public class TwitterCLI {
                 case ~/set/: set(args); break                 // set
                 default:                                      // fallthrough
                     if (strict) {
-                        log.error(color("Unrecognized command: '$command'", colors.error))
-                    } else {
+                        log.error(color("Unrecognized command: '$command'",
+                            colors.error)) }
+                    else {
                         if (warnings) {
                             println "Command '$command' unrecognized: " +
-                                "assuming this is a parameter to 'show'"
-                        }
+                                "assuming this is a parameter to 'show'" }
 
                         args.addFirst(command)
-                        get(args)
-                    }
-            }
-        }
-    }
+                        get(args) }}}}
 
-    /* -------- DELETE Subparsing -------- */
+    /// ### `DELETE` Subparsing.
 
     /**
-     | Parse a ``delete`` command. Valid options are:
+     | #### delete
+     | Parse a `delete` command. Valid options are:
      |
-     | +-------------+--------------------------------------------------+
-     | | *Argument*  | *Description*                                    |
-     | +-------------+--------------------------------------------------+
-     | | ``status``  | Destroy a status given a status id. *This is the |
-     | |             | default command.*                                |
-     | +-------------+--------------------------------------------------+
-     | | ``list``    | Delete a list, remove list members, etc.         |
-     | +-------------+--------------------------------------------------+
+     | `status`
+     | :   Destroy a status given a status id. *This is the default command.* 
      |
-     | @param args A {@link java.util.LinkedList} of arguments.
+     | `list`
+     | :   Delete a list, remove list members, etc.
+     |
+     | `@param args A {@link java.util.LinkedList} of arguments.`
      */
     public void delete(LinkedList args) {
         def option = args.poll()
@@ -219,24 +241,22 @@ public class TwitterCLI {
             case "status": deleteStatus(args); break
             case "list": deleteList(args); break
             default: args.addFirst(option)
-                deleteStatus(args)
-        }
-    }
+                deleteStatus(args) }}
 
     /**
-     | Parse a ``delete list`` command. Valid options are:
+     | #### deleteList
+     | Parse a `delete list` command. Valid options are:
      |
-     | +------------------+---------------------------------------------+
-     | | *Argument*       | *Description*                               |
-     | +------------------+---------------------------------------------+
-     | | ``member``       | Remove a member from a list.                |
-     | +------------------+---------------------------------------------+
-     | | ``subscription`` | Unsubcribe from a given list.               |
-     | +------------------+---------------------------------------------+
-     | | *list-reference* | Delete the list specified by the reference. |
-     | +------------------+---------------------------------------------+
+     | `member`
+     | :   Remove a member from a list.
      |
-     | @param args A {@link java.util.LinkedList} of arguments.
+     | `subscription`
+     | :   Unsubcribe from a given list.
+     |
+     | *list-reference*
+     | :   Delete the list specified by the reference.
+     |
+     | `@param args A {@link java.util.LinkedList} of arguments.`
      */
     public void deleteList(LinkedList args) {
         def option = args.poll()
@@ -247,33 +267,30 @@ public class TwitterCLI {
             case "member": deleteListMember(args); break
             case "subscription": deleteListSubscription(args); break
             default: args.addFirst(option)
-                doDeleteList(args)
-        }
-    }
+                doDeleteList(args) }}
 
-    /* -------- GET/SHOW Subparsing -------- */
-
+    /// ### `GET/SHOW` Subparsing
 
     /**
-     | Parse a ``get`` command. Valid options are:
+     | #### get
+     | Parse a `get` command. Valid options are:
      |
-     | +-------------------+-------------------------------------------------+
-     | | *Argument*        | *Description*                                   |
-     | +-------------------+-------------------------------------------------+
-     | | ``list``          | Show a list timeline, members, subs, etc.       |
-     | +-------------------+-------------------------------------------------+
-     | | ``lists``         | Show lists all lists owned by a given user      |
-     | +-------------------+-------------------------------------------------+
-     | | ``subscriptions`` | Show all of the lists a given user is subcribed |
-     | |                   | to.                                             |
-     | +-------------------+-------------------------------------------------+
-     | | ``timeline``      | Show a timeline of tweets. *This is the default |
-     | |                   | command.*                                       |
-     | +-------------------+-------------------------------------------------+
-     | | ``user``          | Show information about a given users.           |
-     | +-------------------+-------------------------------------------------+
+     | `list`
+     | :   Show a list timeline, members, subs, etc.
      |
-     | @param args A {@link java.util.LinkedList} of arguments.
+     | `lists`
+     | :   Show lists all lists owned by a given user.
+     |
+     | `subscriptions`
+     | :   Show all of the lists a given user is subcribed to.
+     |
+     | `timeline`
+     | :   Show a timeline of tweets. *This is the default command.*
+     |
+     | `user`
+     | :   Show information about a given users.
+     |
+     | `@param args A {@link java.util.LinkedList} of arguments.`
      */
      public void get(LinkedList args) {
         def option = args.poll()
@@ -287,29 +304,27 @@ public class TwitterCLI {
             case "timeline":   showTimeline(args); break
             case "user":   showUser(args); break
             default: args.addFirst(option)
-                showTimeline(args)
-        }
-    }
+                showTimeline(args) }}
 
     /**
-     | Parse a ``show list`` command. Valid options are:
+     | #### showList
+     | Parse a `show list` command. Valid options are:
      |
-     | +--------------------+-----------------------------------------------+
-     | | *Argument*         | *Description*                                 |
-     | +--------------------+-----------------------------------------------+
-     | | ``members``        | Show the members of a given list. This is the |
-     | |                    | list of users who's tweets comprise the list. |
-     | +--------------------+-----------------------------------------------+
-     | | ``subscribers``    | Show the subscribers of a given list. This is |
-     | |                    | the list of users who are see the list.       |
-     | +--------------------+-----------------------------------------------+
-     | | ``subscriptions``  | Show all of the lists a given user is         |
-     | |                    | subscribed to.                                |
-     | +--------------------+-----------------------------------------------+
-     | | *list-reference*   | Show the timeline for a given list.           |
-     | +--------------------+-----------------------------------------------+
+     | `members`
+     | :   Show the members of a given list. This is the list of users who's
+     |     tweets comprise the list.
      |
-     | @param args a {@link java.util.LinkedList} of arguments.
+     | `subscribers`
+     | :   Show the subscribers of a given list. This is the list of users who
+     |     are see the list.
+     |
+     | `subscriptions`
+     | :   Show all of the lists a given user is subscribed to.
+     |
+     | *list-reference*
+     | :   Show the timeline for a given list.
+     |
+     | `@param args a {@link java.util.LinkedList} of arguments.`
      */
     public void showList(LinkedList args) {
         def option = args.poll()
@@ -321,17 +336,16 @@ public class TwitterCLI {
             case "subscribers": showListSubscribers(args); break
             case "subscriptions": showListSubscriptions(args); break
             default: args.addFirst(option)
-                showListTimeline(args)
-        }
-    }
+                showListTimeline(args) }}
 
     /**
-     | Parse a ``show lists`` command. ``show lists`` consumes at most one
+     | #### showLists
+     | Parse a `show lists` command. `show lists` consumes at most one
      | argument, representing a user reference. It shows all of the lists
-     | owned by the given user. If no user reference is given ``show lists``
+     | owned by the given user. If no user reference is given `show lists`
      | shows the lists owned by the currently logged in user. 
      |
-     | @param args a {@link java.util.LinkedList} of arguments.
+     | `@param args a {@link java.util.LinkedList} of arguments.`
      */
     public void showLists(LinkedList args) {
         def user = args.poll()
@@ -340,14 +354,15 @@ public class TwitterCLI {
 
         if (!user) user = twitter.screenName
 
-        printLists(twitter.getUserLists(user, -1)) // TODO paging
-    }
+        // TODO paging
+        printLists(twitter.getUserLists(user, -1)) }
 
     /**
-     | Parse a ``show list members`` command. ``show list members`` consumes
+     | #### showListMembers
+     | Parse a `show list members` command. `show list members` consumes
      | one argument, a reference to the list in question.
      |
-     | @param args a {@util java.util.LinkedList} of arguments.
+     | `@param args a {@util java.util.LinkedList} of arguments.`
      */
     public void showListMembers(LinkedList args) {
         def listRef = parseListReference(args)
@@ -360,20 +375,20 @@ public class TwitterCLI {
                 color(" command requires a list reference in the form of " +
                 "user/list: ", colors.error) +
                 "gritter show list members <user/list>"
-            return
-        }
+            return }
 
         def userList = twitter.getUserListMembers(listRef.username,
             listRef.listId, -1)
 
-        printUserList(userList) // TODO paging
-    }
+        // TODO paging
+        printUserList(userList) }
 
     /**
-     | Parse a ``show list subscribers`` command. ``show list subscribers
+     | #### showListSubscribers
+     | Parse a `show list subscribers` command. `show list subscribers`
      | consumes one argument, a reference to the list in question.
      |
-     | @param args a {@util java.util.LinkedList} of arguments.
+     | `@param args a {@util java.util.LinkedList} of arguments.`
      */
     public void showListSubscribers(LinkedList args) {
         def listRef = parseListReference(args)
@@ -386,18 +401,18 @@ public class TwitterCLI {
                 color(" command requires a list reference in the form of " +
                 "user/list: ", colors.error) +
                 "gritter show list subscribers <user/list>"
-            return
-        }
+            return }
 
+        // TODO: paging
         printUserList(twitter.getUserListSubscribers(
-            listRef.username, listRef.listId, -1))  // TODO: paging
-    }
+            listRef.username, listRef.listId, -1)) }
 
     /**
-     | Parse a ``show list members`` command. ``show list members consumes one
-     | argument, a reference to the list in question.
+     | #### showListSubscriptions
+     | Parse a `show list subscriptions` command. `show list subscriptions`
+     | consumes one argument, a reference to the list in question.
      |
-     | @param args a {@util java.util.LinkedList} of arguments.
+     | `@param args a {@util java.util.LinkedList} of arguments.`
      */
     public void showListSubscriptions(LinkedList args) {
         def user = args.poll()
@@ -407,17 +422,23 @@ public class TwitterCLI {
 
         if (!user) user = twitter.screenName
 
-        printLists(twitter.getUserListSubscriptions(user, -1)) // TODO: paging
-    }
+        // TODO: paging
+        printLists(twitter.getUserListSubscriptions(user, -1)) }
 
+    /**
+     | #### showListTimeline
+     | Parse a `show list timeline` command. `show list timeline` consumes one
+     | argument, a reference to a user's list.
+     |
+     | `@param args a {@util java.util.LinkedList} of arguments.`
+     */
     public void showListTimeline(LinkedList args) {
         if (args.size() < 1) {
             println color("show list", colors.option) +
                 color(" command requires a list reference in the form of " +
                 "user/list: ", colors.error) +
                 "gritter show list <user/list>"
-            return
-        }
+            return }
 
         def listRef = parseListReference(args)
 
@@ -428,13 +449,16 @@ public class TwitterCLI {
                 color(" command requires a list reference in the form of " +
                 "user/list: ", colors.error) +
                 "gritter show list <user/list>"
-            return
-        }
+            return }
 
+        // TODO: paging
         printTimeline(twitter.getUserListStatuses(
-            listRef.username, listRef.listId, new Paging()))  // TODO: paging
-    }
+            listRef.username, listRef.listId, new Paging())) }
 
+    /**
+     | #### showTimeline
+     |
+     */
     public void showTimeline(LinkedList args) {
 
         String timeline = args.poll() ?: "home"
@@ -443,39 +467,37 @@ public class TwitterCLI {
             timeline)
 
         switch (timeline) {
-            // friends
             case "friends": printTimeline(twitter.friendsTimeline); break
-            // home
             case "home": printTimeline(twitter.homeTimeline); break
-            // mine
             case "mine": printTimeline(twitter.userTimeline); break
-            // public
             case "public": printTimeline(twitter.publicTimeline); break
-            // user
             case "user":
                 String user = args.poll()
                 if (user) {
                     if (user.isNumber())
                         printTimeline(twitter.getUserTimeline(user as int))
-                    else printTimeline(twitter.getUserTimeline(user))
-                } else println color("No user specified.", colors.error)
+                    else printTimeline(twitter.getUserTimeline(user)) }
+                else println color("No user specified.", colors.error)
                 break;
             default:
                 println color("Unknown timeline: ", colors.error) +
                     color(timeline, colors.option)
-                break;
-        }
-    }
+                break; }}
 
+    /**
+     * #### showUser
+     */
     public void showUser(LinkedList args) {
         def user = args.poll()
 
         log.debug("Processing a 'show user' command, user = '{}'", user)
 
         println color("show user", colors.option) +
-            color(" is not yet implemented.", colors.error)
-    }
+            color(" is not yet implemented.", colors.error) }
 
+    /**
+     * #### createList
+     */
     public void createList(LinkedList args) {
         def option = args.poll()
 
@@ -483,10 +505,11 @@ public class TwitterCLI {
             case "member": addListMember(args); break
             case "subscription": addListSubscription(args); break
             default: args.addFirst(option)
-                createNewList(args); break
-        }
-    }
+                createNewList(args); break }}
 
+    /**
+     * #### post
+     */
     public void post(LinkedList args) {
         def option = args.poll()
 
@@ -497,17 +520,17 @@ public class TwitterCLI {
                 color(" command requires at least two parameters: ",
                 colors.error) + "gritter post <status|retweet|list> " +
                 "<options>..."
-            return
-        }
+            return }
 
         switch (option) {
             case "status": postStatus(args.poll()); break
             case "retweet": retweetStatus(args.poll()); break
             case "list": createList(args); break
-            default: postStatus(option)
-        }
-    }
+            default: postStatus(option) }}
 
+    /**
+     * #### set
+     */
     public void set(LinkedList args) {
         def option = args.poll()
         def value = args.poll()
@@ -519,8 +542,7 @@ public class TwitterCLI {
             println color("set", colors.option) +
                 color(" command requires two options: ", colors.error) +
                 "gritter set <param> <value>"
-            return
-        }
+            return }
 
         switch (option) {
             case "terminalWidth": terminalWidth = value as int; break
@@ -530,12 +552,14 @@ public class TwitterCLI {
             default:
                 println color("No property named ", colors.error) +
                     color(option, colors.option) +
-                    color(" exists.", colors.error)
-        }
-    }
+                    color(" exists.", colors.error) }}
 
-    /* ======== WORKER FUNCTIONS ========*/
+    /// ## Worker Functions ##
+    /// ----------------------
 
+    /**
+     * #### deleteListMember
+     */
     public void deleteListMember(LinkedList args) {
         def listRef = parseListReference(args)
         def user = args.poll()
@@ -547,8 +571,7 @@ public class TwitterCLI {
             println color("delete list member", colors.option) +
                 color(" requires two parameters: ", colors.error) +
                 "gritter delete list member <list-ref> <user>"
-            return
-        }
+            return }
 
         // look up the user id if neccessary
         if (user.isLong()) user = user as long
@@ -558,10 +581,12 @@ public class TwitterCLI {
 
         // TODO: error checking? print list name?
         println "Deleted " + color("@$user", colors.mentioned) +
-            " from your list."
-    }
+            " from your list." }
 
-    public void deleteListSubscribtion(LinkedList args) {
+    /**
+     * #### deleteListSubscription
+     */
+    public void deleteListSubscription(LinkedList args) {
         def listRef = parseListReference(args)
 
         log.debug("Unsubscribing from a list: listRef='{}', user='{}'",
@@ -571,16 +596,17 @@ public class TwitterCLI {
             println color("delete list subscription", colors.option) +
                 color(" requires a list reference: ", colors.error) +
                 "gritter delete list subscription <list-ref>"
-            return
-        }
+            return }
 
         twitter.unsubscribeUserList(listRef.username, listRef.listId)
 
         // TODO: error checking?
         println "Unsubscribed from list: " + color(listRef.toString(),
-            colors.option)
-    }
+            colors.option) }
 
+    /**
+     * #### doDeleteList
+     */
     public void doDeleteList(LinkedList args) {
         def listRef = parseListReference(args)
 
@@ -590,24 +616,23 @@ public class TwitterCLI {
             println color("destroy list", colors.option) +
                 color(" requries a list reference: ", colors.error) +
                 "gritter destroy list <list-ref>"
-            return
-        }
+            return }
 
         println "Really destroy list '" + color(listRef.toString(),
            colors.option) + "' ?"
         if (stdin.nextLine() ==~ /yes|y|true|t/) {
             try {
                 twitter.destroyUserList(listRef.listId)
-                println "List destroyed."
-            } catch (Exception e) {
+                println "List destroyed." }
+            catch (Exception e) {
                 println "An error occurred trying to delete the list: '" +
                     e.localizedMessage
-                log.error("Error destroying list:", e)
-            }
-        } else println "Destroy list canceled."
- 
-    }
+                log.error("Error destroying list:", e) }}
+            else println "Destroy list canceled." }
 
+    /**
+     * #### deleteStatus
+     */
     public void deleteStatus(LinkedList args) {
         def statusId = args.poll()
 
@@ -617,8 +642,7 @@ public class TwitterCLI {
             println color("destroy status", colors.option) +
                 color(" requires a status id: ", colors.error) +
                 "gritter delete status <status-id>"
-            return
-        }
+            return }
 
         statusId = statusId as long
 
@@ -627,15 +651,16 @@ public class TwitterCLI {
         if (stdin.nextLine() ==~ /yes|y|true|t/) {
             try {
                 twitter.destroyStatus(statusId)
-                println "Status destroyed."
-            } catch (Exception e) {
+                println "Status destroyed." }
+            catch (Exception e) {
                 println "An error occurred trying to destroy the status: '" +
                     e.localizedMessage
-                log.error("Error destroying status:", e)
-            }
-        } else println "Destroy status canceled."
-    }
+                log.error("Error destroying status:", e) }}
+            else println "Destroy status canceled." }
 
+    /**
+     * #### printLists
+     */
     public void printLists(def lists) {
         int colSize = 0
 
@@ -813,7 +838,8 @@ public class TwitterCLI {
         } else { println "List creation cancelled." }
     }
 
-    /* ======== HELP DISPLAY FUNCTIONS ======== */
+    /// ## Help and Display Functions ##
+    /// --------------------------------
 
     public void help(LinkedList args) {
 
@@ -967,7 +993,9 @@ public class TwitterCLI {
         println "    internal id number."
         println ""
     }
-    /* ======== UTILITY FUNCTIONS ======== */
+
+    /// ## Utility Functions
+    /// --------------------
 
     public def parseListReference(LinkedList args) {
         def username = args.poll()

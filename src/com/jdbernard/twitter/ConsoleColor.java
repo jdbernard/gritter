@@ -1,7 +1,19 @@
+/**
+ * # ConsoleColor
+ * @author Jonathan Bernard (jdbernard@gmail.com)
+ * @org jdbernard.com/twitter/ConsoleColor
+ * @copyright 2010-2012 Jonathan Bernard
+ */
 package com.jdbernard.twitter;
 
+/**
+ * The ConsoleColor class is a wrapper around [ANSI escape codes].
+ *
+ * [ANSI escape codes]: http://en.wikipedia.org/wiki/ANSI_escape_code
+ */ 
 public class ConsoleColor {
 
+    // Storage for color information.
     public final Colors fg;
     public final Colors bg;
     public final boolean bright;
